@@ -10,7 +10,6 @@ import {
   Divider,
   Button,
   Tooltip,
-  CircularProgress,
   Stack,
   Chip,
 } from "@mui/material";
@@ -18,6 +17,7 @@ import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
 import { useLanguage } from "../context/LanguageContext";
 import { textEllipsisSx } from "../styles/textEllipsis";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
+import NotificationMenuSkeleton from "./loading/NotificationMenuSkeleton";
 import {
   parseNotification,
   resolveNotificationUrl,
@@ -35,7 +35,7 @@ export default function NotificationBellMenu({
   setUnreadCount,
 }) {
   const navigate = useNavigate();
-  const { t, lang } = useLanguage();
+  const { t, lang, isRtl } = useLanguage();
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
   const [loading, setLoading] = useState(false);
@@ -57,7 +57,7 @@ export default function NotificationBellMenu({
         return;
       }
       const list = data?.notifications || [];
-      setItems(list.slice(0, 6));
+      setItems(list.slice(0, 3));
       if (data?.unread_count !== undefined) {
         setUnreadCount(Number(data.unread_count) || 0);
       }
@@ -137,15 +137,17 @@ export default function NotificationBellMenu({
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
-        transformOrigin={{ horizontal: "left", vertical: "top" }}
-        anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
+        disableScrollLock
+        transformOrigin={{ horizontal: isRtl ? "left" : "right", vertical: "top" }}
+        anchorOrigin={{ horizontal: isRtl ? "left" : "right", vertical: "bottom" }}
         PaperProps={{
           sx: {
-            width: { xs: "min(100vw - 24px, 400px)", sm: 400 },
+            width: { xs: "min(100vw - 24px, 440px)", sm: 440 },
             borderRadius: 3,
             mt: 1,
-            border: "1px solid #E6E8EC",
-            boxShadow: "0 20px 50px rgba(0,0,0,0.12)",
+            border: "1px solid",
+            borderColor: "divider",
+            boxShadow: "0 20px 50px rgba(15,23,42,0.14)",
             overflow: "hidden",
           },
         }}
@@ -153,15 +155,17 @@ export default function NotificationBellMenu({
         <Box
           sx={{
             px: 2,
-            py: 1.5,
-            bgcolor: "#111827",
+            py: 1.75,
+            bgcolor: "primary.main",
             color: "white",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
           }}
         >
-          <Typography sx={{ fontWeight: 900 }}>{t("notifications.title")}</Typography>
+          <Typography sx={{ fontWeight: 900, fontSize: 15 }}>
+            {t("notifications.title")}
+          </Typography>
           <Stack direction="row" spacing={0.5} alignItems="center">
             {unreadCount > 0 && (
               <Chip
@@ -189,11 +193,7 @@ export default function NotificationBellMenu({
           </Stack>
         </Box>
 
-        {loading && (
-          <Box sx={{ p: 3, display: "flex", justifyContent: "center" }}>
-            <CircularProgress size={22} />
-          </Box>
-        )}
+        {loading && <NotificationMenuSkeleton count={3} />}
 
         {!loading && error && (
           <Typography variant="body2" color="error" sx={{ p: 2 }}>
@@ -227,19 +227,19 @@ export default function NotificationBellMenu({
                 sx={{
                   alignItems: "flex-start",
                   gap: 1.5,
-                  py: 1.5,
+                  py: 1.75,
                   px: 2,
                   whiteSpace: "normal",
                   bgcolor: isUnread ? "rgba(37,99,235,0.06)" : "transparent",
-                  borderRight: isUnread
+                  borderInlineStart: isUnread
                     ? "3px solid #2563EB"
                     : "3px solid transparent",
                 }}
               >
                 <Box
                   sx={{
-                    width: 40,
-                    height: 40,
+                    width: 44,
+                    height: 44,
                     borderRadius: 2,
                     bgcolor: meta.bg,
                     color: meta.color,
@@ -256,13 +256,15 @@ export default function NotificationBellMenu({
                     justifyContent="space-between"
                     spacing={1}
                   >
-                    <Typography sx={{ fontWeight: 800, fontSize: 13, ...textEllipsisSx }}>
+                    <Typography
+                      sx={{ fontWeight: 800, fontSize: 14, ...textEllipsisSx }}
+                    >
                       {title}
                     </Typography>
                     <Typography
                       variant="caption"
                       color="text.secondary"
-                      sx={{ flexShrink: 0 }}
+                      sx={{ flexShrink: 0, fontWeight: 600 }}
                     >
                       {formatNotificationTime(n.created_at, t, lang)}
                     </Typography>
@@ -272,8 +274,9 @@ export default function NotificationBellMenu({
                       variant="body2"
                       color="text.secondary"
                       sx={{
-                        mt: 0.3,
-                        fontSize: 12.5,
+                        mt: 0.4,
+                        fontSize: 13,
+                        lineHeight: 1.55,
                         display: "-webkit-box",
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: "vertical",
@@ -287,8 +290,8 @@ export default function NotificationBellMenu({
                     label={meta.label}
                     size="small"
                     sx={{
-                      mt: 0.8,
-                      height: 20,
+                      mt: 0.9,
+                      height: 22,
                       fontSize: 11,
                       fontWeight: 700,
                       bgcolor: meta.bg,

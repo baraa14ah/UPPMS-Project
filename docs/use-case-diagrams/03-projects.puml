@@ -1,0 +1,59 @@
+@startuml 03-projects
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam actorStyle awesome
+skinparam defaultFontName Arial
+skinparam usecase {
+  BackgroundColor #EEF4FF
+  BorderColor #1D4ED8
+  FontSize 13
+}
+skinparam actor {
+  FontSize 13
+  FontStyle bold
+}
+
+title UPPMS — Project Management
+
+actor Student
+actor Supervisor
+actor "University Admin" as Admin
+actor "Super Admin" as SuperAdmin
+
+rectangle "UPPMS" {
+  usecase "UC-19 Create Project" as UC19
+  usecase "UC-20 List Projects" as UC20
+  usecase "UC-21 View Project Details" as UC21
+  usecase "UC-22 Update Project" as UC22
+  usecase "UC-23 Delete Project" as UC23
+  usecase "UC-24 View Progress" as UC24
+  usecase "UC-25 View Activity Feed" as UC25
+  usecase "UC-26 Leave Supervision" as UC26
+}
+
+Student --> UC19
+Student --> UC20
+Student --> UC21
+Student --> UC22
+Student --> UC23
+Student --> UC24
+Student --> UC25
+Supervisor --> UC20
+Supervisor --> UC21
+Supervisor --> UC24
+Supervisor --> UC25
+Supervisor --> UC26
+Admin --> UC19
+Admin --> UC20
+Admin --> UC21
+Admin --> UC22
+Admin --> UC23
+Admin --> UC24
+Admin --> UC25
+SuperAdmin --> UC20
+SuperAdmin --> UC21
+SuperAdmin --> UC22
+SuperAdmin --> UC23
+
+@enduml

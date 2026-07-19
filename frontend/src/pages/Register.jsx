@@ -130,18 +130,26 @@ export default function Register() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const validationMsg = data?.errors
-          ? Object.values(data.errors).flat().join(" | ")
-          : null;
+        const credentialMsg = data?.errors?.credentials?.[0];
+        const validationMsg = credentialMsg
+          || (data?.errors
+            ? Object.values(data.errors).flat().join(" | ")
+            : null);
         setMessageType("error");
         toast.error(validationMsg || data?.message || "تعذر إنشاء الحساب");
+        setMessage(validationMsg || data?.message || "تعذر إنشاء الحساب");
         setLoading(false);
         return;
       }
 
+      const isActive = data?.user?.status === "active";
       setMessageType("success");
-      setMessage("تم إنشاء الحساب! بعد اعتماد مدير الجامعة يمكنك تسجيل الدخول.");
-      toast.success("تم إنشاء الحساب — انتظر اعتماد الجامعة");
+      setMessage(
+        isActive
+          ? "تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن."
+          : "تم إنشاء الحساب! بعد اعتماد مدير الجامعة يمكنك تسجيل الدخول.",
+      );
+      toast.success(isActive ? "تم إنشاء الحساب — يمكنك تسجيل الدخول" : "تم إنشاء الحساب — انتظر اعتماد الجامعة");
       setTimeout(() => navigate("/login"), 1200);
     } catch {
       setMessageType("error");

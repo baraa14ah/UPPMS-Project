@@ -2,11 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicStageConfig;
 use App\Models\University;
+use App\Services\UniversitySchedulingBootstrapService;
 use Illuminate\Http\Request;
 
 class UniversityController extends Controller
 {
+    public function __construct(
+        protected UniversitySchedulingBootstrapService $schedulingBootstrap
+    ) {}
+
     /** List active universities for public registration. */
     public function publicList()
     {
@@ -18,10 +24,26 @@ class UniversityController extends Controller
         return response()->json(['universities' => $universities]);
     }
 
-    /** List all universities for platform admin. */
+    /** List all universities for platform admin with academic usage stats. */
     public function index()
     {
-        $universities = University::orderBy('name')->get();
+        $byId = collect(app(PlatformAdminController::class)->universitiesOverview())->keyBy('id');
+
+        $universities = University::orderBy('name')->get()->map(function (University $uni) use ($byId) {
+            $stats = $byId->get($uni->id, []);
+
+            return array_merge($uni->toArray(), [
+                'users_total' => $stats['users_total'] ?? 0,
+                'projects' => $stats['projects'] ?? 0,
+                'tracks' => $stats['tracks'] ?? 0,
+                'active_tracks' => $stats['active_tracks'] ?? 0,
+                'active_schedules' => $stats['active_schedules'] ?? 0,
+                'committees' => $stats['committees'] ?? 0,
+                'pending_proposals' => $stats['pending_proposals'] ?? 0,
+                'defense_rooms' => $stats['defense_rooms'] ?? 0,
+                'defense_types' => $stats['defense_types'] ?? 0,
+            ]);
+        });
 
         return response()->json(['universities' => $universities]);
     }
@@ -39,6 +61,8 @@ class UniversityController extends Controller
             'slug'      => $request->slug,
             'is_active' => true,
         ]);
+
+        $this->schedulingBootstrap->ensureFinalDefenseStage($university);
 
         return response()->json([
             'message'    => 'University created successfully.',

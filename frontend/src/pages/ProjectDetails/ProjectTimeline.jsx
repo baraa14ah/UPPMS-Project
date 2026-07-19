@@ -34,7 +34,12 @@ const VERSION_KEYS = new Set([
   "githubSynced",
   "githubPushed",
 ]);
-const TEAM_KEYS = new Set(["memberJoined", "supervisorJoined"]);
+const TEAM_KEYS = new Set([
+  "memberJoined",
+  "memberLeft",
+  "ownerLeftTransferred",
+  "supervisorJoined",
+]);
 
 /** Classifies an activity into tasks, versions, team, or other. */
 function getActivityCategory(activity) {
@@ -68,7 +73,7 @@ const getActivityConfig = (type) => {
 };
 
 /** Displays a filterable chronological timeline of project activities. */
-export default function ProjectTimeline({ projectId }) {
+export default function ProjectTimeline({ projectId, compact = false }) {
   const { authHeaders, apiFetch, API_BASE_URL } = useAuth();
   const { t, dir, lang } = useLanguage();
   const dateLocale = lang === "ar" ? "ar-EG" : "en-US";
@@ -164,6 +169,7 @@ export default function ProjectTimeline({ projectId }) {
       title={t("projectDetails.timelineTitle")}
       subtitle={t("projectDetails.timelineSubtitle")}
       accent="#0F766E"
+      compact={compact}
       actions={
         <Chip
           label={`${filteredActivities.length} ${t("projectDetails.activityCountLabel")}`}
@@ -173,7 +179,7 @@ export default function ProjectTimeline({ projectId }) {
       }
     >
       {activities.length > 0 && (
-        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 2.5, gap: 0.75 }}>
+        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: compact ? 1.5 : 2.5, gap: 0.75 }}>
           {filterOptions.map(({ key, label, count }) => (
             <Chip
               key={key}

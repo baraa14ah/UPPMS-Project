@@ -9,10 +9,18 @@ use Illuminate\Support\Facades\DB;
 
 class StudentService
 {
+    public function __construct(
+        protected TrackService $trackService,
+    ) {
+    }
+
     /** Returns students eligible for invitation, excluding owner and current members. */
     public function getAvailableStudents(int $projectId, ?string $search = null): Collection
     {
-        $project = Project::query()->whereKey($projectId)->first();
+        $project = Project::query()
+            ->with('proposal:id,track_stage_id')
+            ->whereKey($projectId)
+            ->first();
         if (!$project || !$project->university_id) {
             return collect();
         }
@@ -39,9 +47,18 @@ class StudentService
             });
         }
 
-        return $query
-            ->select('id', 'name', 'email', 'student_number', 'university_id')
+        $students = $query
+            ->select('id', 'name', 'email', 'student_number', 'university_id', 'track_id')
             ->orderBy('name')
             ->get();
+
+        $trackStageId = $this->trackService->resolveProjectTrackStageId($project);
+        if (!$trackStageId) {
+            return $students;
+        }
+
+        return $students
+            ->filter(fn (User $student) => $this->trackService->canStudentJoinProjectStage($student, $trackStageId))
+            ->values();
     }
 }

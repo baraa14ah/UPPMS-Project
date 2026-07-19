@@ -2,8 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicStageConfig;
+use App\Models\ApprovedSchedule;
+use App\Models\AvailableRoom;
+use App\Models\Committee;
 use App\Models\Project;
+use App\Models\ProjectProposal;
 use App\Models\Role;
+use App\Models\Track;
 use App\Models\University;
 use App\Models\User;
 use App\Services\UserDeletionService;
@@ -12,34 +18,99 @@ use Illuminate\Support\Facades\DB;
 
 class PlatformAdminController extends Controller
 {
-    /** Return platform-wide dashboard statistics. */
+    /** Return platform-wide dashboard statistics including academic feature usage. */
     public function dashboardStats()
     {
         return response()->json([
             'stats' => [
                 'universities' => University::query()->count(),
-                'users'        => User::query()
+                'users' => User::query()
                     ->whereHas('role', fn ($q) => $q->where('name', '!=', 'super_admin'))
                     ->count(),
-                'projects'     => Project::query()->count(),
+                'projects' => Project::query()->count(),
                 'pending_users' => User::query()
                     ->where('status', 'pending')
                     ->whereHas('role', fn ($q) => $q->whereNotIn('name', ['super_admin', 'admin']))
                     ->count(),
+                'tracks' => Track::withoutGlobalScopes()->count(),
+                'active_tracks' => Track::withoutGlobalScopes()->where('is_active', true)->count(),
+                'active_schedules' => ApprovedSchedule::withoutGlobalScopes()
+                    ->where('status', 'active')
+                    ->count(),
+                'committees' => Committee::withoutGlobalScopes()->where('is_active', true)->count(),
+                'pending_proposals' => ProjectProposal::withoutGlobalScopes()
+                    ->where('status', 'pending')
+                    ->count(),
+                'defense_rooms' => AvailableRoom::withoutGlobalScopes()->count(),
+                'defense_types' => AcademicStageConfig::withoutGlobalScopes()->count(),
             ],
-            'universities_breakdown' => $this->universitiesUsersBreakdown(),
+            'universities_breakdown' => $this->universitiesOverview(),
         ]);
     }
 
-    /** Build per-university user and project breakdown stats. */
+    /** Public overview used by dashboard and universities listing. */
+    public function universitiesOverview(): array
+    {
+        return $this->universitiesUsersBreakdown();
+    }
+
+    /** Build per-university user, project, and academic-feature breakdown. */
     private function universitiesUsersBreakdown(): array
     {
         $roleIds = Role::query()->pluck('id', 'name');
 
+        $trackCounts = Track::withoutGlobalScopes()
+            ->selectRaw('university_id, COUNT(*) as aggregate')
+            ->groupBy('university_id')
+            ->pluck('aggregate', 'university_id');
+
+        $activeTrackCounts = Track::withoutGlobalScopes()
+            ->selectRaw('university_id, COUNT(*) as aggregate')
+            ->where('is_active', true)
+            ->groupBy('university_id')
+            ->pluck('aggregate', 'university_id');
+
+        $scheduleCounts = ApprovedSchedule::withoutGlobalScopes()
+            ->selectRaw('university_id, COUNT(*) as aggregate')
+            ->where('status', 'active')
+            ->groupBy('university_id')
+            ->pluck('aggregate', 'university_id');
+
+        $committeeCounts = Committee::withoutGlobalScopes()
+            ->selectRaw('university_id, COUNT(*) as aggregate')
+            ->where('is_active', true)
+            ->groupBy('university_id')
+            ->pluck('aggregate', 'university_id');
+
+        $pendingProposalCounts = ProjectProposal::withoutGlobalScopes()
+            ->selectRaw('university_id, COUNT(*) as aggregate')
+            ->where('status', 'pending')
+            ->groupBy('university_id')
+            ->pluck('aggregate', 'university_id');
+
+        $roomCounts = AvailableRoom::withoutGlobalScopes()
+            ->selectRaw('university_id, COUNT(*) as aggregate')
+            ->groupBy('university_id')
+            ->pluck('aggregate', 'university_id');
+
+        $stageCounts = AcademicStageConfig::withoutGlobalScopes()
+            ->selectRaw('university_id, COUNT(*) as aggregate')
+            ->groupBy('university_id')
+            ->pluck('aggregate', 'university_id');
+
         return University::query()
             ->orderBy('name')
             ->get()
-            ->map(function (University $uni) use ($roleIds) {
+            ->map(function (University $uni) use (
+                $roleIds,
+                $trackCounts,
+                $activeTrackCounts,
+                $scheduleCounts,
+                $committeeCounts,
+                $pendingProposalCounts,
+                $roomCounts,
+                $stageCounts,
+            ) {
                 $base = User::query()
                     ->whereHas('role', fn ($q) => $q->where('name', '!=', 'super_admin'))
                     ->where(function ($q) use ($uni) {
@@ -60,15 +131,23 @@ class PlatformAdminController extends Controller
                 };
 
                 return [
-                    'id'           => $uni->id,
-                    'name'         => $uni->name,
-                    'is_active'    => (bool) $uni->is_active,
-                    'users_total'  => (clone $base)->count(),
-                    'students'     => $countByRole('student'),
-                    'supervisors'  => $countByRole('supervisor'),
-                    'admins'       => $countByRole('admin'),
-                    'pending'      => (clone $base)->where('status', 'pending')->count(),
-                    'projects'     => Project::query()->where('university_id', $uni->id)->count(),
+                    'id' => $uni->id,
+                    'name' => $uni->name,
+                    'slug' => $uni->slug,
+                    'is_active' => (bool) $uni->is_active,
+                    'users_total' => (clone $base)->count(),
+                    'students' => $countByRole('student'),
+                    'supervisors' => $countByRole('supervisor'),
+                    'admins' => $countByRole('admin'),
+                    'pending' => (clone $base)->where('status', 'pending')->count(),
+                    'projects' => Project::query()->where('university_id', $uni->id)->count(),
+                    'tracks' => (int) ($trackCounts[$uni->id] ?? 0),
+                    'active_tracks' => (int) ($activeTrackCounts[$uni->id] ?? 0),
+                    'active_schedules' => (int) ($scheduleCounts[$uni->id] ?? 0),
+                    'committees' => (int) ($committeeCounts[$uni->id] ?? 0),
+                    'pending_proposals' => (int) ($pendingProposalCounts[$uni->id] ?? 0),
+                    'defense_rooms' => (int) ($roomCounts[$uni->id] ?? 0),
+                    'defense_types' => (int) ($stageCounts[$uni->id] ?? 0),
                 ];
             })
             ->values()
@@ -100,14 +179,14 @@ class PlatformAdminController extends Controller
     public function storeUser(Request $request)
     {
         $request->validate([
-            'name'            => 'required|string|max:255',
-            'email'           => 'required|email|unique:users,email',
-            'password'        => 'required|min:6',
-            'role'            => 'required|string|in:admin,supervisor,student',
-            'university_id'   => 'required|integer|exists:universities,id',
-            'university_ids'  => 'nullable|array',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|min:6',
+            'role' => 'required|string|in:admin,supervisor,student',
+            'university_id' => 'required|integer|exists:universities,id',
+            'university_ids' => 'nullable|array',
             'university_ids.*' => 'integer|exists:universities,id',
-            'status'          => 'nullable|string|in:pending,active,rejected',
+            'status' => 'nullable|string|in:pending,active,rejected',
         ]);
 
         $role = Role::where('name', $request->role)->first();
@@ -134,13 +213,13 @@ class PlatformAdminController extends Controller
         }
 
         $user = User::create([
-            'name'          => $request->name,
-            'email'         => $request->email,
-            'password'      => $request->password,
-            'role_id'       => $role->id,
-            'university_id'  => $primaryUniversityId,
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => $request->password,
+            'role_id' => $role->id,
+            'university_id' => $primaryUniversityId,
             'student_number' => $request->role === 'student' ? $request->student_number : null,
-            'status'         => $request->input('status', 'active'),
+            'status' => $request->input('status', 'active'),
         ]);
 
         $this->syncSupervisorUniversitiesFromRequest($user, $request);
@@ -149,7 +228,7 @@ class PlatformAdminController extends Controller
 
         return response()->json([
             'message' => 'User created successfully.',
-            'user'    => $user,
+            'user' => $user,
         ], 201);
     }
 
@@ -166,15 +245,15 @@ class PlatformAdminController extends Controller
         }
 
         $request->validate([
-            'name'            => 'sometimes|string|max:255',
-            'email'           => 'sometimes|email|unique:users,email,' . $id,
-            'password'        => 'sometimes|min:6',
-            'role'            => 'sometimes|string|in:admin,supervisor,student',
-            'university_id'   => 'sometimes|integer|exists:universities,id',
-            'university_ids'  => 'nullable|array',
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|unique:users,email,' . $id,
+            'password' => 'sometimes|min:6',
+            'role' => 'sometimes|string|in:admin,supervisor,student',
+            'university_id' => 'sometimes|integer|exists:universities,id',
+            'university_ids' => 'nullable|array',
             'university_ids.*' => 'integer|exists:universities,id',
-            'status'          => 'sometimes|string|in:pending,active,rejected',
-            'student_number'  => 'nullable|string|max:50',
+            'status' => 'sometimes|string|in:pending,active,rejected',
+            'student_number' => 'nullable|string|max:50',
         ]);
 
         if ($request->has('name')) {
@@ -226,7 +305,7 @@ class PlatformAdminController extends Controller
 
         return response()->json([
             'message' => 'User updated successfully.',
-            'user'    => $user,
+            'user' => $user,
         ]);
     }
 
@@ -256,7 +335,14 @@ class PlatformAdminController extends Controller
     public function indexProjects(Request $request)
     {
         $query = Project::query()
-            ->with(['user:id,name,email', 'supervisor:id,name,email', 'university:id,name'])
+            ->with([
+                'user:id,name,email',
+                'supervisor:id,name,email',
+                'university:id,name',
+                'proposal:id,track_stage_id',
+                'proposal.trackStage:id,name,parent_id',
+                'proposal.trackStage.parent:id,name',
+            ])
             ->orderByDesc('created_at');
 
         if ($request->filled('search')) {
@@ -275,7 +361,14 @@ class PlatformAdminController extends Controller
             $query->where('university_id', (int) $request->university_id);
         }
 
-        return response()->json(['projects' => $query->get()]);
+        $projects = $query->get()->map(function (Project $project) {
+            $phaseName = $project->proposal?->trackStage?->parent?->name;
+            $project->setAttribute('phase_name', $phaseName);
+
+            return $project;
+        });
+
+        return response()->json(['projects' => $projects]);
     }
 
     /** Update a platform project. */
@@ -287,9 +380,9 @@ class PlatformAdminController extends Controller
         }
 
         $request->validate([
-            'title'       => 'sometimes|string|max:255',
+            'title' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
-            'status'      => 'nullable|in:pending,in_progress,completed',
+            'status' => 'nullable|in:pending,in_progress,completed',
         ]);
 
         $project->update($request->only(['title', 'description', 'status']));

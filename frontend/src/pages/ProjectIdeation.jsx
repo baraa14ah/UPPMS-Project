@@ -33,7 +33,6 @@ export default function ProjectIdeation() {
   const [bookmarksLoading, setBookmarksLoading] = useState(true);
   const [error, setError] = useState("");
   const [loadingMessage, setLoadingMessage] = useState("");
-  const [adoptingIndex, setAdoptingIndex] = useState(null);
 
   const bookmarkedNames = useMemo(
     () => new Set(bookmarks.map((b) => b.suggestion_name)),
@@ -127,60 +126,25 @@ export default function ProjectIdeation() {
     }
   };
 
-  /** Creates a project from suggestion and generates AI tasks. */
-  const handleAdoptAndGenerate = async (suggestion, index) => {
-    setAdoptingIndex(index);
+  /** Opens the proposal form with this idea prefilled (supervisor must approve). */
+  const handleAdoptAsProposal = (suggestion) => {
+    const title = String(suggestion?.name || "").trim();
+    const description = String(suggestion?.goal || "").trim();
 
-    try {
-      const projectDescription = suggestion.goal || "";
-
-      const { res: createRes, data: createData } = await apiFetch(
-        `${API_BASE_URL}/project/create`,
-        {
-          method: "POST",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({
-            title: suggestion.name,
-            description: projectDescription,
-          }),
-        },
-      );
-
-      if (!createRes.ok) {
-        toast.error(createData?.message || t("ideation.adoptError"));
-        return;
-      }
-
-      const newProjectId = createData?.project?.id;
-
-      if (!newProjectId) {
-        toast.error(t("ideation.adoptError"));
-        return;
-      }
-
-      const { res: taskRes } = await apiFetch(
-        `${API_BASE_URL}/projects/${newProjectId}/generate-tasks`,
-        {
-          method: "POST",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ regenerate: false }),
-        },
-      );
-
-      if (!taskRes.ok) {
-        toast(t("ideation.adoptPartialSuccess"), { icon: "⚠️" });
-        navigate(`/dashboard/projects/${newProjectId}?tab=tasks`);
-        return;
-      }
-
-      toast.success(t("ideation.adoptSuccess"));
-      navigate(`/dashboard/projects/${newProjectId}?tab=tasks`);
-    } catch (err) {
-      console.error("Adopt and generate error:", err);
-      toast.error(t("ideation.adoptError"));
-    } finally {
-      setAdoptingIndex(null);
+    if (!title || description.length < 20) {
+      toast.error(t("ideation.descriptionTooShort"));
+      return;
     }
+
+    toast.success(t("ideation.adoptRedirect"));
+    navigate("/dashboard/proposals", {
+      state: {
+        prefill: {
+          title: title.slice(0, 200),
+          description: description.slice(0, 5000),
+        },
+      },
+    });
   };
 
   /** Delete a saved bookmark by id. */
@@ -273,9 +237,7 @@ export default function ProjectIdeation() {
               suggestion={suggestion}
               initiallyBookmarked={bookmarkedNames.has(suggestion.name)}
               onBookmarked={loadBookmarks}
-              onAdoptAndGenerate={() => handleAdoptAndGenerate(suggestion, index)}
-              isAdopting={adoptingIndex === index}
-              adoptDisabled={adoptingIndex !== null}
+              onAdoptAndGenerate={() => handleAdoptAsProposal(suggestion)}
             />
           ))}
         </Stack>
@@ -297,21 +259,36 @@ export default function ProjectIdeation() {
         ) : (
           bookmarks.map((bookmark) => (
             <Paper key={bookmark.id} variant="outlined" sx={{ p: 2 }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                <Box sx={{ flex: 1, pr: 2 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    {bookmark.suggestion_name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    {bookmark.suggestion_goal}
-                  </Typography>
-                </Box>
-                <IconButton
-                  aria-label={t("ideation.deleteBookmark")}
-                  onClick={() => handleDeleteBookmark(bookmark.id)}
+              <Stack spacing={1.5}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Box sx={{ flex: 1, pr: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      {bookmark.suggestion_name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      {bookmark.suggestion_goal}
+                    </Typography>
+                  </Box>
+                  <IconButton
+                    aria-label={t("ideation.deleteBookmark")}
+                    onClick={() => handleDeleteBookmark(bookmark.id)}
+                  >
+                    <DeleteOutline />
+                  </IconButton>
+                </Stack>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() =>
+                    handleAdoptAsProposal({
+                      name: bookmark.suggestion_name,
+                      goal: bookmark.suggestion_goal,
+                    })
+                  }
+                  sx={{ alignSelf: "flex-start", fontWeight: 800 }}
                 >
-                  <DeleteOutline />
-                </IconButton>
+                  {t("ideation.adoptAndGenerate")}
+                </Button>
               </Stack>
             </Paper>
           ))

@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PMS — الإضافتان المقترحتان لتحسين الجدولة</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    @page { size: A4; margin: 25mm 20mm 22mm 20mm; }
+    body {
+      font-family: "Traditional Arabic", "Times New Roman", Times, serif;
+      font-size: 14pt; line-height: 1.9; color: #000; margin: 0; padding: 0;
+      background: #fff; text-align: justify;
+    }
+    .cover { page-break-after: always; text-align: center; padding: 90px 40px 60px; min-height: 85vh; }
+    .cover .chapter-label { font-size: 13pt; letter-spacing: 1px; margin-bottom: 48px; color: #333; }
+    .cover h1 { font-size: 21pt; font-weight: bold; line-height: 1.6; margin: 0 0 24px; border: none; padding: 0; }
+    .cover .subtitle { font-size: 13pt; color: #333; margin-bottom: 80px; line-height: 1.8; }
+    .cover .meta { font-size: 12pt; color: #444; border-top: 1px solid #000; display: inline-block; padding-top: 16px; margin-top: 24px; min-width: 300px; }
+    .abstract { page-break-after: always; padding: 40px 0 20px; }
+    .abstract h2 { font-size: 14pt; text-align: center; margin-bottom: 24px; font-weight: bold; }
+    .abstract p { text-indent: 1.5em; margin: 0 0 12px; }
+    .keywords { margin-top: 24px; font-size: 12pt; }
+    .toc { page-break-after: always; padding: 20px 0; }
+    .toc h2 { font-size: 14pt; text-align: center; margin-bottom: 28px; font-weight: bold; }
+    .toc ol { line-height: 2.0; padding-right: 0; list-style: none; counter-reset: toc; font-size: 12.5pt; }
+    .toc ol li { counter-increment: toc; padding: 2px 0; border-bottom: 1px dotted #999; }
+    .toc ol li::before { content: counter(toc) ". "; font-weight: bold; }
+    h2.section { font-size: 14pt; font-weight: bold; margin: 32px 0 16px; page-break-after: avoid; text-align: right; }
+    h3 { font-size: 13pt; font-weight: bold; margin: 20px 0 10px; page-break-after: avoid; }
+    p { margin: 0 0 12px; text-indent: 1.5em; }
+    p.no-indent { text-indent: 0; }
+    ul, ol { margin: 8px 0 16px; padding-right: 2em; }
+    li { margin: 4px 0; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 20px; font-size: 12pt; page-break-inside: avoid; direction: ltr; }
+    th, td { border: 1px solid #000; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { font-weight: bold; background: #f5f5f5; }
+    .table-caption, .figure-caption { font-size: 11pt; text-align: center; margin: -8px 0 20px; color: #333; direction: ltr; }
+    .definition { margin: 16px 24px; padding: 12px 16px; border-right: 2px solid #000; background: #fafafa; text-indent: 0; }
+    .definition strong { display: block; margin-bottom: 6px; }
+    .note { margin: 16px 0; padding: 10px 14px; border: 1px solid #666; font-size: 12pt; text-indent: 0; }
+    .update { margin: 16px 0; padding: 10px 14px; border: 1px solid #000; border-right: 4px solid #000; background: #f0f0f0; text-indent: 0; }
+    .planned { margin: 16px 0; padding: 10px 14px; border: 1px dashed #333; background: #fafafa; text-indent: 0; font-size: 12pt; }
+    .diagram { margin: 20px 0 8px; padding: 16px; border: 1px solid #999; page-break-inside: avoid; background: #fff; }
+    .mermaid { direction: ltr; text-align: center; font-size: 11pt; }
+    .conclusion { margin-top: 32px; padding-top: 16px; border-top: 1px solid #000; }
+    .conclusion h2 { font-size: 14pt; text-align: center; margin-bottom: 16px; }
+    footer { margin-top: 48px; padding-top: 12px; border-top: 1px solid #ccc; font-size: 10pt; text-align: center; color: #555; }
+  </style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="chapter-label">نظام إدارة مشاريع التخرج (PMS)</div>
+  <h1>الإضافتان المقترحتان لتحسين محرك الجدولة<br/>شرح مفاهيمي للفهم<br/>التهيئة الذكية · إصلاح التعارضات</h1>
+  <p class="subtitle">
+    دليل تفسيري — لماذا نحتاجهما، كيف يعملان، وماذا يتغيّر عملياً<br/>
+    يوليو 2026
+  </p>
+  <div class="meta">مكمل لدليل الإصدار 2.0 · تحسينات مقترحة (لم تُنفَّذ بعد)</div>
+</div>
+
+<div class="abstract">
+  <h2>الملخص</h2>
+  <p>
+    بعد تطبيق الإصدار 2.0 (اللياقة بالعقوبة، الاختيار المعجمي، لجان جاهزة)، أصبح
+    محرك الجدولة <strong>قابلاً للاستخدام الفعلي</strong> في حجم 15–30 مشروعاً.
+    لكن عند توسّع العدد أو ضيق الموارد، يظهر عنق زجاجة: المحرك يبدأ من جداول
+    عشوائية بالكامل، ويكتشف التعارضات بعد التوليد لا أثناءه. يقترح هذا الدليل
+    <strong>إضافتين مكمّلتين</strong>: (1) <em>التهيئة الذكية</em> — بدء التشغيل
+    بجداول شبه صالحة بدل العشوائية الكاملة؛ (2) <em>إصلاح التعارضات</em> — خطوة
+    تصحيح فورية بعد كل تزاوج وطفرة. يشرح الدليل الفكرتين بأمثلة عملية، مقارنة
+    قبل وبعد، وكيف تتكاملان مع ما هو موجود اليوم — دون تفاصيل برمجية.
+  </p>
+  <p class="keywords no-indent">
+    <strong>الكلمات المفتاحية:</strong>
+    تهيئة ذكية، إصلاح التعارضات، خوارزمية جينية، تحسين الجدولة، الإصدار 2.0.
+  </p>
+</div>
+
+<div class="toc">
+  <h2>فهرس المحتويات</h2>
+  <ol>
+    <li>لماذا هاتان الإضافتان؟</li>
+    <li>كيف يعمل المحرك اليوم (v2) — نقطة البداية</li>
+    <li>الإضافة الأولى: التهيئة الذكية — الفكرة</li>
+    <li>الإضافة الأولى: مثال عملي خطوة بخطوة</li>
+    <li>الإضافة الثانية: إصلاح التعارضات — الفكرة</li>
+    <li>الإضافة الثانية: مثال عملي خطوة بخطوة</li>
+    <li>كيف تعمل الإضافتان معاً</li>
+    <li>مقارنة شاملة: قبل الإضافتين وبعدهما</li>
+    <li>متى نحتاجهما ومتى يكفي الوضع الحالي</li>
+    <li>الخلاصة</li>
+  </ol>
+</div>
+
+<div class="body">
+
+<h2 class="section">1. لماذا هاتان الإضافتان؟</h2>
+<p>
+  الإصدار 2.0 حل مشكلة <strong>التقييم والترتيب</strong>: المدير يرى مقترحات
+  مُرتَّبة ويمكنه اعتماد الأفضل. لكنه لم يحل مشكلتين في <strong>التوليد</strong>:
+</p>
+<ul>
+  <li><strong>البداية العشوائية:</strong> كل تشغيل يبدأ بمئة جدول عشوائي — كأنك ترمي 100 ورقة على الطاولة وتنتظر أن تصلح نفسها.</li>
+  <li><strong>اكتشاف متأخر للتعارض:</strong> عند تغيير وقت أو قاعة، لا يُتحقَّق فوراً من تعارض القاعة أو الأستاذ — يُكتشف لاحقاً عند التقييم.</li>
+</ul>
+
+<div class="planned">
+  <strong>تنبيه:</strong> هاتان الإضافتان <em>مقترحتان للتحسين المستقبلي</em> —
+  لم تُنفَّذا بعد في النظام. هذا الدليل للفهم والتخطيط، وليس وصفاً لسلوك
+  الشاشة الحالية.
+</div>
+
+<table>
+  <tr><th>Problem today</th><th>Proposed addition</th><th>Benefit</th></tr>
+  <tr><td>100% random start</td><td>Smart initialization</td><td>Faster path to valid schedules</td></tr>
+  <tr><td>Conflicts found only at evaluation</td><td>Repair operator</td><td>Fewer violations per generation</td></tr>
+</table>
+<p class="table-caption">Table 1: Two gaps and their proposed solutions</p>
+
+<h2 class="section">2. كيف يعمل المحرك اليوم (v2) — نقطة البداية</h2>
+<p>
+  لفهم الإضافتين، نحتاج صورة واضحة لما يحدث <strong>الآن</strong> عند ضغط
+  «تشغيل الخوارزمية»:
+</p>
+
+<ol>
+  <li>يُبنى سياق الجدولة (مشاريع، قاعات، لجان، فتحات زمنية).</li>
+  <li>يُنشأ <strong>100 جدول عشوائي</strong> — كل جدول = جلسة لكل مشروع.</li>
+  <li>تُقيَّم الجداول (مخالفات صارمة + درجة ناعمة).</li>
+  <li>تتكرر 50 جيلاً: اختيار، تزاوج، طفرة، استبدال الأضعف.</li>
+  <li>يُختار أفضل 3 جداول متميزة ويُعرَضون للمدير.</li>
+</ol>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  START[Build context] --> INIT[100 random schedules]
+  INIT --> EVAL[Evaluate fitness]
+  EVAL --> LOOP[50 generations: select / crossover / mutate]
+  LOOP --> TOP[Pick top 3 distinct]
+  TOP --> ADMIN[Admin reviews and approves]
+</pre>
+</div>
+<p class="figure-caption">Figure 1: Current v2 engine flow (baseline)</p>
+
+<div class="note">
+  <strong>أين الضعف؟</strong> في الخطوتين الأولى والرابعة: البداية عشوائية
+  بالكامل، والطفرة قد تُنشئ تعارضاً جديداً دون إصلاحه فوراً.
+</div>
+
+<h2 class="section">3. الإضافة الأولى: التهيئة الذكية — الفكرة</h2>
+
+<div class="definition">
+  <strong>تعريف: التهيئة الذكية (Smart Initialization)</strong>
+  بدلاً من إنشاء كل الجداول الأولية عشوائياً، يُنشئ المحرك عدداً من الجداول
+  «شبه الصالحة» بمنطق بسيط: يوزّع المشاريع واحداً تلو الآخر على أول فتحة زمنية
+  وقاعة متاحة دون تعارض — ثم يُكمّل باقي المجتمع عشوائياً أو بمتغيرات طفيفة
+  على الجدول الجيد.
+</div>
+
+<h3>3.1 تشبيه مبسّط</h3>
+<p>
+  تخيّل أنك ترتّب 15 اجتماعاً في تقويم:
+</p>
+<ul>
+  <li><strong>الطريقة العشوائية (اليوم):</strong> تضع كل اجتماع في وقت عشوائي — كثير من التعارضات، تحتاج ساعات للتصحيح.</li>
+  <li><strong>الطريقة الذكية (المقترحة):</strong> تبدأ بالاجتماع الأول في أول فتحة فارغة، الثاني في أول فتحة لا تتعارض، وهكذا — تحصل على مسودة جيدة من البداية.</li>
+</ul>
+
+<h3>3.2 ماذا يتغيّر في المجتمع الأولي؟</h3>
+
+<table>
+  <tr><th>Population slice</th><th>Current (v2)</th><th>With smart init (proposed)</th></tr>
+  <tr><td>~20 schedules</td><td>Random</td><td>Greedy — one conflict-aware pass</td></tr>
+  <tr><td>~30 schedules</td><td>Random</td><td>Mutations of the greedy seed (small changes)</td></tr>
+  <tr><td>~50 schedules</td><td>Random</td><td>Fully random (diversity preserved)</td></tr>
+</table>
+<p class="table-caption">Table 2: Proposed population mix (100 total)</p>
+
+<p>
+  الهدف ليس إلغاء العشوائية — الخوارزمية الجينية تحتاج تنوعاً — بل <strong>زرع
+  بذور جيدة</strong> بين العشوائي حتى لا يبدأ التطور من الصفر كل مرة.
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph TODAY["Today"]
+    R1[Random 1]
+    R2[Random 2]
+    R3[Random ... x100]
+  end
+  subgraph PROPOSED["With smart init"]
+    G[Greedy seed — low violations]
+    M[Mutated variants x30]
+    R[Random x50]
+  end
+</pre>
+</div>
+<p class="figure-caption">Figure 2: Random-only vs mixed initialization</p>
+
+<h2 class="section">4. الإضافة الأولى: مثال عملي خطوة بخطوة</h2>
+<p>
+  <strong>السياق:</strong> 5 مشاريع (لتبسيط الشرح)، قاعتان (A و B)، فتحتان
+  يوم السبت: 10:00 و 11:00، لجنة واحدة جاهزة.
+</p>
+
+<h3>4.1 التهيئة العشوائية (اليوم)</h3>
+<table>
+  <tr><th>Project</th><th>Random slot</th><th>Random room</th><th>Conflict?</th></tr>
+  <tr><td>P1</td><td>Sat 10:00</td><td>A</td><td>—</td></tr>
+  <tr><td>P2</td><td>Sat 10:00</td><td>A</td><td>Room A double-booked</td></tr>
+  <tr><td>P3</td><td>Sat 10:00</td><td>B</td><td>Committee double-booked</td></tr>
+  <tr><td>P4</td><td>Sat 11:00</td><td>A</td><td>—</td></tr>
+  <tr><td>P5</td><td>Sat 10:00</td><td>B</td><td>Committee double-booked</td></tr>
+</table>
+<p class="table-caption">Table 3: Random init — 3 hard conflicts from the start</p>
+
+<h3>4.2 التهيئة الذكية (المقترحة)</h3>
+<table>
+  <tr><th>Step</th><th>Project</th><th>Chosen slot</th><th>Chosen room</th><th>Reason</th></tr>
+  <tr><td>1</td><td>P1</td><td>Sat 10:00</td><td>A</td><td>First free slot</td></tr>
+  <tr><td>2</td><td>P2</td><td>Sat 10:00</td><td>B</td><td>Room A taken; committee free at 10:00 in B</td></tr>
+  <tr><td>3</td><td>P3</td><td>Sat 11:00</td><td>A</td><td>Committee busy at 10:00; next slot</td></tr>
+  <tr><td>4</td><td>P4</td><td>Sat 11:00</td><td>B</td><td>Only remaining free combo</td></tr>
+  <tr><td>5</td><td>P5</td><td>—</td><td>—</td><td>No slot left → flagged early</td></tr>
+</table>
+<p class="table-caption">Table 4: Greedy init — 0 conflicts among schedulable projects; capacity gap visible</p>
+
+<div class="update">
+  <strong>الفائدة العملية:</strong> الجيل الأول يبدأ بجدول فيه 0–1 مخالفة بدل 5–10.
+  المحرك يصل أسرع إلى مقترحات قابلة للاعتماد — خاصة مع 40+ مشروعاً.
+</div>
+
+<h2 class="section">5. الإضافة الثانية: إصلاح التعارضات — الفكرة</h2>
+
+<div class="definition">
+  <strong>تعريف: إصلاح التعارضات (Repair Operator)</strong>
+  خطوة تصحيح تُنفَّذ <em>بعد</em> التزاوج والطفرة مباشرة: تفحص الجدول الجديد
+  وتُصلح التعارضات البسيطة تلقائياً — نقل جلسة لقاعة فارغة، أو لأقرب فتحة
+  زمنية لا يتعارض فيها الأستاذ أو القاعة — قبل إعادة التقييم.
+</div>
+
+<h3>5.1 لماذا نحتاجها رغم وجود التقييم؟</h3>
+<p>
+  التقييم (اللياقة بالعقوبة) يُخبرنا <strong>أي جدول أفضل</strong> — لكنه لا
+  <strong>يُصلح</strong> الجدول. إصلاح التعارضات يحوّل جدولاً «سيئاً» إلى جدول
+  «مقبول» في نفس الجيل، بدل انتظار 10 أجيال حتى تصل الطفرة العشوائية للحل.
+</p>
+
+<h3>5.2 قواعد الإصلاح المقترحة (بالترتيب)</h3>
+<ol>
+  <li><strong>تعارض قاعة:</strong> نفس القاعة، نفس الوقت لمشروعين → انقل أحدهما لقاعة فارغة في نفس الوقت.</li>
+  <li><strong>تعارض أستاذ:</strong> نفس عضو اللجنة في جلستين بنفس الوقت → انقل إحداهما لأقرب فتحة يكون فيها الأستاذ والقاعة متاحين.</li>
+  <li><strong>تعارض مشرف:</strong> مشرفان لمشروعين في نفس الوقت (حضور مناقشتين) → انقل إحداهما (قيد مقترح إضافي).</li>
+  <li><strong>إن فشل الإصلاح:</strong> يبقى التعارض — والتقييم يعاقبه كالعادة.</li>
+</ol>
+
+<table>
+  <tr><th>Stage</th><th>Without repair</th><th>With repair</th></tr>
+  <tr><td>After crossover</td><td>Child may inherit 2 room conflicts</td><td>Repair moves 2 sessions → 0 conflicts</td></tr>
+  <tr><td>After mutation</td><td>New random room may double-book</td><td>Repair picks next free room</td></tr>
+  <tr><td>Evaluation</td><td>Penalty applied</td><td>Often no penalty needed</td></tr>
+</table>
+<p class="table-caption">Table 5: Repair operator effect per generation step</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  CROSS[Crossover / Mutation] --> CHILD[New child schedule]
+  CHILD --> REPAIR[Repair conflicts]
+  REPAIR --> EVAL[Evaluate fitness]
+  EVAL --> NEXT[Next generation]
+</pre>
+</div>
+<p class="figure-caption">Figure 3: Where repair fits in the evolution loop</p>
+
+<h2 class="section">6. الإضافة الثانية: مثال عملي خطوة بخطوة</h2>
+<p>
+  <strong>الموقف:</strong> بعد تزاوج جدولين، حصل التعارض التالي:
+</p>
+
+<table>
+  <tr><th>Project</th><th>Time</th><th>Room</th><th>Committee member Dr. Samer</th></tr>
+  <tr><td>P2</td><td>Sat 10:00</td><td>A</td><td>Yes</td></tr>
+  <tr><td>P7</td><td>Sat 10:00</td><td>B</td><td>Yes — CONFLICT</td></tr>
+  <tr><td>P9</td><td>Sat 11:00</td><td>A</td><td>No</td></tr>
+</table>
+<p class="table-caption">Table 6: Conflict after crossover — Dr. Samer at two sessions same time</p>
+
+<h3>6.1 بدون إصلاح (اليوم)</h3>
+<p>
+  الجدول يُقيَّم → مخالفة صارمة واحدة على P7 → درجة منخفضة → يُقارَن بجداول
+  أخرى → قد يُستبدل في الجيل التالي إن وُجد أفضل. قد يحتاج عدة أجيال للتخلص
+  من التعارض.
+</p>
+
+<h3>6.2 مع إصلاح التعارضات (المقترح)</h3>
+<ol>
+  <li>يكتشف الإصلاح: د. سامر محجوز السبت 10:00 في P2 و P7.</li>
+  <li>يبحث عن أقرب فتحة لـ P7: السبت 11:00 — د. سامر متاح، القاعة B فارغة.</li>
+  <li>ينقل P7 إلى السبت 11:00، القاعة B.</li>
+  <li>يُقيَّم الجدول → 0 مخالفات صارمة.</li>
+</ol>
+
+<table>
+  <tr><th>Project</th><th>After repair — Time</th><th>Room</th><th>Violations</th></tr>
+  <tr><td>P2</td><td>Sat 10:00</td><td>A</td><td>0</td></tr>
+  <tr><td>P7</td><td>Sat 11:00</td><td>B</td><td>0 — fixed</td></tr>
+  <tr><td>P9</td><td>Sat 11:00</td><td>A</td><td>0</td></tr>
+</table>
+<p class="table-caption">Table 7: Same schedule after repair — conflict resolved in one step</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant Op as Crossover
+  participant Rep as Repair
+  participant Fit as Fitness
+  Op->>Rep: Child with Dr. Samer double-booked
+  Rep->>Rep: Move P7 to Sat 11:00 Room B
+  Rep->>Fit: Clean schedule
+  Fit-->>Op: High fitness — kept in population
+</pre>
+</div>
+<p class="figure-caption">Figure 4: Repair example — one conflict fixed before evaluation</p>
+
+<h2 class="section">7. كيف تعمل الإضافتان معاً</h2>
+<p>
+  الإضافتان مكمّلتان لا منافستان:
+</p>
+
+<table>
+  <tr><th>Addition</th><th>When it acts</th><th>What it solves</th></tr>
+  <tr><td>Smart initialization</td><td>Once — at engine start</td><td>Bad starting point — too many random conflicts</td></tr>
+  <tr><td>Repair operator</td><td>Every generation — after each child</td><td>New conflicts introduced by crossover / mutation</td></tr>
+</table>
+<p class="table-caption">Table 8: Complementary roles of both additions</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  CTX[Scheduling context ready]
+  CTX --> SI[Smart init: greedy seed + variants]
+  SI --> POP[Mixed population 100]
+  POP --> GEN[Generation loop]
+  GEN --> CROSS[Crossover + Mutation]
+  CROSS --> REP[Repair conflicts]
+  REP --> EVAL[Evaluate v2 fitness]
+  EVAL --> SEL[Select and replace]
+  SEL --> GEN
+  SEL --> OUT[Top 3 candidates to admin]
+</pre>
+</div>
+<p class="figure-caption">Figure 5: Full proposed engine with both additions</p>
+
+<div class="update">
+  <strong>التكامل مع v2:</strong> اللياقة بالعقوبة والترتيب المعجمي يبقيان كما
+  هما — الإضافتان لا تستبدلهما، بل تُقلّلان عدد الجداول التي تحتاج العقوبة
+  أصلاً. المدير يرى نفس الشاشة: 3 مقترحات — لكنها تصل أسرع وأنظف.
+</div>
+
+<h2 class="section">8. مقارنة شاملة: قبل الإضافتين وبعدهما</h2>
+
+<table>
+  <tr><th>Metric</th><th>v2 today</th><th>v2 + both additions (proposed)</th></tr>
+  <tr><td>Typical conflicts in generation 1</td><td>High (random start)</td><td>Low (greedy seeds)</td></tr>
+  <tr><td>Generations to reach 0 violations</td><td>10–30 (varies)</td><td>3–10 (estimated)</td></tr>
+  <tr><td>Warning: no valid schedule</td><td>More likely at 40+ projects</td><td>Less likely</td></tr>
+  <tr><td>Execution time (~30s cap)</td><td>Uses full budget</td><td>May finish earlier (with early stop)</td></tr>
+  <tr><td>Admin experience</td><td>Same 3 candidates UI</td><td>Same UI — higher quality candidates</td></tr>
+  <tr><td>Implementation risk</td><td>—</td><td>Low — additive, no rewrite</td></tr>
+</table>
+<p class="table-caption">Table 9: Before/after comparison — v2 vs v2 + proposed additions</p>
+
+<h3>8.1 مثال مجمّع: 30 مشروع سيمنار</h3>
+
+<table>
+  <tr><th>Scenario</th><th>v2 today</th><th>With both additions</th></tr>
+  <tr><td>Best candidate violations</td><td>Often 0; sometimes 1–2</td><td>Usually 0</td></tr>
+  <tr><td>Candidate #2 quality</td><td>May be similar to #1</td><td>More likely distinct and valid</td></tr>
+  <tr><td>Admin decision time</td><td>Review + maybe re-run</td><td>Review + approve first try</td></tr>
+</table>
+<p class="table-caption">Table 10: 30-project seminar — expected practical difference</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph V2["v2 today"]
+    A1[Random start] --> A2[Slow convergence]
+    A2 --> A3[3 candidates — OK]
+  end
+  subgraph V2PLUS["v2 + additions"]
+    B1[Smart start] --> B2[Repair each gen]
+    B2 --> B3[3 candidates — cleaner]
+  end
+</pre>
+</div>
+<p class="figure-caption">Figure 6: Overall improvement path</p>
+
+<h2 class="section">9. متى نحتاجهما ومتى يكفي الوضع الحالي</h2>
+
+<table>
+  <tr><th>Situation</th><th>Recommendation</th></tr>
+  <tr><td>15–30 projects, 3 committees, 8 rooms</td><td>v2 today is sufficient — no urgent need</td></tr>
+  <tr><td>40+ projects or tight room capacity</td><td>Smart init + repair recommended</td></tr>
+  <tr><td>Frequent warning: no valid schedule</td><td>Implement both additions</td></tr>
+  <tr><td>Admin re-runs engine multiple times</td><td>Smart init reduces re-runs</td></tr>
+  <tr><td>Final defense season (high stakes)</td><td>Both additions + early stop + capacity check</td></tr>
+</table>
+<p class="table-caption">Table 11: When to implement the proposed additions</p>
+
+<div class="note">
+  <strong>أولوية التنفيذ المقترحة:</strong> (1) إصلاح التعارضات — تأثير فوري
+  في كل جيل؛ (2) التهيئة الذكية — تأثير على البداية. يمكن تنفيذهما معاً في
+  مرحلة واحدة لأنهما لا يتعارضان.
+</div>
+
+<div class="conclusion">
+  <h2>10. الخلاصة</h2>
+  <p>
+    <strong>الإضافة الأولى — التهيئة الذكية:</strong> تبدأ المحرك من جداول شبه
+    صالحة بدل العشوائية الكاملة، كأنك تضع مسودة منطقية على الطاولة قبل التحسين.
+    <strong>الإضافة الثانية — إصلاح التعارضات:</strong> تُصلح الأخطاء فور
+    توليدها في كل جيل، بدل انتظار التطور العشوائي لإصلاحها. معاً، تُكمّلان
+    الإصدار 2.0 دون استبداله: نفس واجهة المدير، نفس 3 مقترحات، لكن مساراً أقصر
+    إلى جداول خالية من المخالفات. للحجم الحالي (15–30 مشروع) الوضع الحالي
+    كافٍ؛ للتوسع أو المواسم الضيقة، هاتان الإضافتان هي التحسين الأنسب
+    بأقل مخاطرة.
+  </p>
+</div>
+
+</div>
+
+<footer>
+  نظام إدارة مشاريع التخرج — دليل الإضافتين المقترحتين لتحسين الجدولة · يوليو 2026
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "neutral",
+    themeVariables: {
+      fontFamily: "Times New Roman, Traditional Arabic, serif",
+      fontSize: "12px"
+    },
+    flowchart: { curve: "linear", padding: 12 },
+    sequence: { actorMargin: 40, messageMargin: 28 }
+  });
+</script>
+</body>
+</html>

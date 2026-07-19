@@ -69,6 +69,16 @@ export function resolveActivityText(activity, t) {
       pick: () => ({}),
     },
     {
+      re: /^غادر المشروع كعضو فريق$/,
+      key: "memberLeft",
+      pick: () => ({}),
+    },
+    {
+      re: /^غادر المشروع وانتقلت الملكية إلى (.+)$/,
+      key: "ownerLeftTransferred",
+      pick: (m) => ({ name: m[1] }),
+    },
+    {
       re: /^انضم إلى المشروع كمشرف$/,
       key: "supervisorJoined",
       pick: () => ({}),

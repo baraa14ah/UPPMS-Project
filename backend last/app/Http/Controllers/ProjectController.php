@@ -6,17 +6,23 @@ use App\Models\Project;
 use Illuminate\Http\Request;
 use App\Services\ProjectService;
 use App\Services\GithubService;
+use App\Services\TrackService;
 
 class ProjectController extends Controller
 {
     protected ProjectService $projectService;
     protected GithubService $githubService;
+    protected TrackService $trackService;
 
     /** Initialize the controller with project and GitHub services. */
-    public function __construct(ProjectService $projectService, GithubService $githubService)
-    {
+    public function __construct(
+        ProjectService $projectService,
+        GithubService $githubService,
+        TrackService $trackService,
+    ) {
         $this->projectService = $projectService;
         $this->githubService = $githubService;
+        $this->trackService = $trackService;
     }
 
     /** List projects visible to the authenticated user. */
@@ -37,11 +43,34 @@ class ProjectController extends Controller
 
         if (!$project) return response()->json(['message' => 'Project not found'], 404);
 
+        $defenseSession = $project->activeDefenseSession;
+        if ($defenseSession) {
+            $this->trackService->autoCompleteExpiredNonDecisiveSessionIfNeeded($defenseSession);
+            $project = $this->projectService->getProjectFullDetails((int)$id);
+            $defenseSession = $project->activeDefenseSession;
+        }
+
+        if (!$defenseSession) {
+            $defenseSession = $this->projectService->getLatestActiveScheduleDefenseSession($project);
+        }
+
+        $project = $this->projectService->enrichProjectWithTrackStage($project);
+
         $stats = $this->projectService->calculateProgress((int)$id);
+
+        $defenseResult = null;
+        if ($defenseSession) {
+            $defenseResult = $this->trackService->getDefenseSessionContext(
+                $project,
+                $defenseSession,
+            );
+        }
 
         return response()->json([
             'project' => $project,
-            'stats' => $stats
+            'defense_session' => $defenseSession,
+            'stats' => $stats,
+            'defense_result' => $defenseResult,
         ]);
     }
 
@@ -75,7 +104,7 @@ class ProjectController extends Controller
         ]);
     }
 
-    /** Delete a project. */
+    /** Delete a project (admin only). */
     public function delete(Request $request, $id)
     {
         $result = $this->projectService->delete((int)$id, $request->user());
@@ -89,6 +118,39 @@ class ProjectController extends Controller
         }
 
         return response()->json(['message' => 'تم حذف المشروع بنجاح']);
+    }
+
+    /** Student leaves a project (members leave, solo owners delete, owners transfer). */
+    public function leave(Request $request, $id)
+    {
+        $result = $this->projectService->leaveProject((int) $id, $request->user());
+
+        if ($result === 'not_found') {
+            return response()->json(['message' => 'المشروع غير موجود'], 404);
+        }
+
+        if ($result === 'forbidden') {
+            return response()->json(['message' => 'غير مصرح لك بمغادرة هذا المشروع'], 403);
+        }
+
+        $message = match (true) {
+            !empty($result['project_deleted']) && !empty($result['phase_reset']) =>
+                'تمت مغادرة المشروع وحذفه، وأُعيد ضبط المسار الفرعي غير المكتمل',
+            !empty($result['project_deleted']) =>
+                'تمت مغادرة المشروع وحذفه بنجاح',
+            !empty($result['ownership_transferred']) && !empty($result['phase_reset']) =>
+                'تمت مغادرة المشروع ونقل الملكية، وأُعيد ضبط مسارك الفرعي غير المكتمل',
+            !empty($result['ownership_transferred']) =>
+                'تمت مغادرة المشروع ونقل الملكية بنجاح',
+            !empty($result['phase_reset']) =>
+                'تمت مغادرة المشروع وأُعيد ضبط المسار الفرعي غير المكتمل',
+            default => 'تمت مغادرة المشروع بنجاح',
+        };
+
+        return response()->json([
+            'message' => $message,
+            'data' => $result,
+        ]);
     }
 
     /** Route alias that delegates to delete. */

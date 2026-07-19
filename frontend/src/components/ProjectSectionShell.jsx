@@ -13,7 +13,11 @@ export default function ProjectSectionShell({
   sx,
   contentSx,
   noPadding,
+  compact = false,
 }) {
+  const iconSize = compact ? 34 : 44;
+  const titleVariant = compact ? "subtitle1" : "h6";
+
   return (
     <Paper
       elevation={0}
@@ -22,6 +26,7 @@ export default function ProjectSectionShell({
         ...accentTop(accent),
         overflow: "hidden",
         ...(noPadding ? { p: 0 } : {}),
+        ...(compact && !noPadding ? { p: { xs: 1.5, md: 2 } } : {}),
         ...sx,
       }}
     >
@@ -29,36 +34,37 @@ export default function ProjectSectionShell({
         direction={{ xs: "column", sm: "row" }}
         justifyContent="space-between"
         alignItems={{ xs: "flex-start", sm: "center" }}
-        spacing={1.5}
+        spacing={compact ? 1 : 1.5}
         sx={{
-          px: noPadding ? { xs: 2, md: 2.5 } : 0,
-          pt: noPadding ? { xs: 2, md: 2.5 } : 0,
-          pb: noPadding ? 0 : 2,
-          mb: noPadding ? 2 : 0,
+          px: noPadding ? { xs: 1.5, md: 2 } : 0,
+          pt: noPadding ? { xs: 1.5, md: 2 } : 0,
+          pb: noPadding ? 0 : compact ? 1.25 : 2,
+          mb: noPadding ? (compact ? 1.25 : 2) : 0,
         }}
       >
-        <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ minWidth: 0 }}>
+        <Stack direction="row" spacing={compact ? 1 : 1.5} alignItems="center" sx={{ minWidth: 0 }}>
           {Icon && (
             <Box
               sx={{
-                width: 44,
-                height: 44,
-                borderRadius: 2.5,
+                width: iconSize,
+                height: iconSize,
+                borderRadius: compact ? 2 : 2.5,
                 display: "grid",
                 placeItems: "center",
                 flexShrink: 0,
                 bgcolor: alpha(accent, 0.12),
                 color: accent,
+                "& svg": { fontSize: compact ? 20 : 24 },
               }}
             >
               <Icon />
             </Box>
           )}
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.25 }}>
+            <Typography variant={titleVariant} sx={{ fontWeight: 900, lineHeight: 1.25 }}>
               {title}
             </Typography>
-            {subtitle && (
+            {subtitle && !compact && (
               <Typography
                 variant="body2"
                 color="text.secondary"
@@ -71,7 +77,14 @@ export default function ProjectSectionShell({
         </Stack>
         {actions}
       </Stack>
-      <Box sx={{ ...(noPadding ? { px: { xs: 2, md: 2.5 }, pb: { xs: 2, md: 2.5 } } : {}), ...contentSx }}>
+      <Box
+        sx={{
+          ...(noPadding
+            ? { px: { xs: 1.5, md: 2 }, pb: { xs: 1.5, md: 2 } }
+            : {}),
+          ...contentSx,
+        }}
+      >
         {children}
       </Box>
     </Paper>

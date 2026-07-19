@@ -61,9 +61,12 @@ class ProfileController extends Controller
 
         $user->profile->update($data);
 
+        $user->load(['profile', 'role', 'university']);
+
         return response()->json([
             'message' => 'Profile updated successfully',
             'profile' => $user->profile->fresh(),
+            'user' => $user,
         ]);
     }
 

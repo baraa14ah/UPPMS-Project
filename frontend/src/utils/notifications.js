@@ -205,6 +205,39 @@ function translateByType(type, payload, extra, t) {
       body: t("notificationMessages.account.approved.body"),
     };
   }
+  if (normalized === "proposal_submitted") {
+    return {
+      title: t("notificationMessages.proposal.submitted.title"),
+      body: t("notificationMessages.proposal.submitted.body", {
+        student: extra.student_name || payload.student_name || "",
+        title: extra.title || payload.title || "",
+      }),
+    };
+  }
+  if (normalized === "proposal_approved") {
+    return {
+      title: t("notificationMessages.proposal.approved.title"),
+      body: t("notificationMessages.proposal.approved.body", {
+        title: extra.title || payload.title || "",
+      }),
+    };
+  }
+  if (normalized === "proposal_rejected") {
+    return {
+      title: t("notificationMessages.proposal.rejected.title"),
+      body: t("notificationMessages.proposal.rejected.body", {
+        title: extra.title || payload.title || "",
+      }),
+    };
+  }
+  if (normalized === "proposal_reassigned") {
+    return {
+      title: t("notificationMessages.proposal.reassigned.title"),
+      body: t("notificationMessages.proposal.reassigned.body", {
+        title: extra.title || payload.title || "",
+      }),
+    };
+  }
 
   return null;
 }
@@ -216,6 +249,10 @@ const ALWAYS_TRANSLATE_TYPES = new Set([
   "supervisor.membership_approved",
   "supervisor.membership_rejected",
   "account.approved",
+  "proposal_submitted",
+  "proposal_approved",
+  "proposal_rejected",
+  "proposal_reassigned",
 ]);
 
 /** Normalizes a notification record into `{ type, title, body, payload }`. */
@@ -313,6 +350,26 @@ export function resolveNotificationUrl(n) {
     return "/dashboard/student/invitations";
   }
 
+  if (type === "proposal_submitted" || type === "proposal_reassigned") {
+    return "/dashboard/proposal-review";
+  }
+
+  if (type === "proposal_approved") {
+    return projectId ? `/dashboard/projects/${projectId}` : "/dashboard/proposals";
+  }
+
+  if (type === "proposal_rejected") {
+    return "/dashboard/proposals";
+  }
+
+  if (
+    type === "committee_member_added" ||
+    type === "committee_member_removed" ||
+    type === "committee_role_changed"
+  ) {
+    return "/dashboard/committees";
+  }
+
   if (projectId) return `/dashboard/projects/${projectId}`;
   return "/dashboard/notifications";
 }
@@ -367,6 +424,26 @@ export function getNotificationMeta(type = "", t) {
       color: "#4F46E5",
       bg: "rgba(79,70,229,0.12)",
       label: t("notificationLabels.project"),
+    };
+  }
+  if (normalized.startsWith("proposal_")) {
+    return {
+      icon: FolderRoundedIcon,
+      color: "#4F46E5",
+      bg: "rgba(79,70,229,0.12)",
+      label: t("notificationLabels.proposal"),
+    };
+  }
+  if (
+    normalized === "committee_member_added" ||
+    normalized === "committee_member_removed" ||
+    normalized === "committee_role_changed"
+  ) {
+    return {
+      icon: GroupRoundedIcon,
+      color: "#7C3AED",
+      bg: "rgba(124,58,237,0.12)",
+      label: t("notificationLabels.committee"),
     };
   }
   if (

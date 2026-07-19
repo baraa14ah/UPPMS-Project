@@ -19,6 +19,14 @@ use App\Http\Controllers\PasswordResetHelpController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AIIdeationController;
 use App\Http\Controllers\AITaskController;
+use App\Http\Controllers\AcademicStageController;
+use App\Http\Controllers\AvailableRoomController;
+use App\Http\Controllers\DoctorAvailabilityController;
+use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\XmlImportController;
+use App\Http\Controllers\ProjectProposalController;
+use App\Http\Controllers\CommitteeController;
+use App\Http\Controllers\TrackController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +43,7 @@ Route::get('/auth/github/callback', [GitHubAuthController::class, 'callback']);
 Route::get('/auth/github/redirect', [GitHubAuthController::class, 'redirect']);
 
 Route::get('/universities', [UniversityController::class, 'publicList']);
+Route::get('/xml-import/schema', [XmlImportController::class, 'schema']);
 
 /*
 |--------------------------------------------------------------------------
@@ -96,7 +105,24 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureUserHasUniversity:
             Route::get('/password-reset-requests', [PasswordResetHelpController::class, 'index']);
             Route::post('/password-reset-requests/{id}/temporary-password', [PasswordResetHelpController::class, 'temporaryPassword']);
             Route::post('/password-reset-requests/{id}/dismiss', [PasswordResetHelpController::class, 'dismiss']);
+
+            Route::prefix('admin/xml-import')->group(function () {
+                Route::post('/', [XmlImportController::class, 'import']);
+                Route::post('/preview', [XmlImportController::class, 'preview']);
+                Route::get('/history', [XmlImportController::class, 'history']);
+                Route::get('/statistics', [XmlImportController::class, 'statistics']);
+                Route::get('/{id}', [XmlImportController::class, 'show']);
+            });
         });
+
+        Route::middleware(['role:admin,super_admin'])->group(function () {
+            Route::apiResource('available-rooms', AvailableRoomController::class);
+            Route::apiResource('academic-stages', AcademicStageController::class)->except(['index']);
+            Route::post('/academic-stages/{id}/open-availability', [AcademicStageController::class, 'openAvailability']);
+            Route::post('/academic-stages/sync-defense-calendar', [AcademicStageController::class, 'syncDefenseCalendar']);
+        });
+
+        Route::middleware(['role:admin,supervisor'])->get('/academic-stages', [AcademicStageController::class, 'index']);
 
         Route::middleware(['role:super_admin'])->group(function () {
             Route::get('/admin/universities', [UniversityController::class, 'index']);
@@ -120,12 +146,61 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureUserHasUniversity:
         |--------------------------------------------------------------------------
         */
         Route::post('/project/create', [ProjectController::class, 'create'])
-            ->middleware('role:admin,student');
+            ->middleware('role:admin');
+
+        Route::get('/proposals', [ProjectProposalController::class, 'index']);
+        Route::get('/proposals/{id}', [ProjectProposalController::class, 'show']);
+        Route::post('/proposals', [ProjectProposalController::class, 'store'])->middleware('role:student');
+        Route::put('/proposals/{id}', [ProjectProposalController::class, 'update'])->middleware('role:student');
+        Route::delete('/proposals/{id}', [ProjectProposalController::class, 'destroy'])->middleware('role:student');
+        Route::post('/proposals/{id}/approve', [ProjectProposalController::class, 'approve'])->middleware('role:supervisor');
+        Route::post('/proposals/{id}/reject', [ProjectProposalController::class, 'reject'])->middleware('role:supervisor');
+        Route::post('/proposals/{id}/reassign', [ProjectProposalController::class, 'reassign'])->middleware('role:admin');
+        Route::get('/supervisors/available', [ProjectProposalController::class, 'availableSupervisors'])->middleware('role:student');
+
+        Route::get('/tracks/available-stages', [TrackController::class, 'availableStages'])->middleware('role:student');
+        Route::get('/student-progress', [TrackController::class, 'myProgress']);
+        Route::get('/student-progress/{student}', [TrackController::class, 'studentProgress'])->middleware('role:admin,supervisor');
+        Route::post('/student-progress/{student}/override', [TrackController::class, 'overridePrerequisite'])->middleware('role:admin');
+        Route::post('/defense-sessions/{defenseSession}/record-result', [TrackController::class, 'recordResult'])->middleware('role:admin,supervisor');
+        Route::post('/defense-sessions/{defenseSession}/complete-stage', [TrackController::class, 'completeStage'])->middleware('role:admin,supervisor');
+
+        Route::middleware(['role:admin'])->prefix('tracks')->group(function () {
+            Route::get('/', [TrackController::class, 'index']);
+            Route::post('/', [TrackController::class, 'store']);
+            Route::get('/{track}', [TrackController::class, 'show']);
+            Route::put('/{track}', [TrackController::class, 'update']);
+            Route::delete('/{track}', [TrackController::class, 'destroy']);
+            Route::post('/{track}/stages', [TrackController::class, 'addStage']);
+            Route::put('/{track}/stages/reorder', [TrackController::class, 'reorderStages']);
+            Route::post('/{track}/phases', [TrackController::class, 'addPhase']);
+            Route::put('/{track}/phases/reorder', [TrackController::class, 'reorderPhases']);
+            Route::put('/{track}/phases/{phase}/steps/reorder', [TrackController::class, 'reorderPhaseSteps']);
+            Route::put('/{track}/stages/{stage}', [TrackController::class, 'updateStage']);
+            Route::delete('/{track}/stages/{stage}', [TrackController::class, 'deleteStage']);
+            Route::post('/{track}/students', [TrackController::class, 'assignStudents']);
+        });
+
+        Route::middleware(['role:admin'])->group(function () {
+            Route::get('/committees', [CommitteeController::class, 'index']);
+            Route::post('/committees', [CommitteeController::class, 'store']);
+            Route::get('/committees/{committee}', [CommitteeController::class, 'show']);
+            Route::put('/committees/{committee}', [CommitteeController::class, 'update']);
+            Route::post('/committees/{committee}/deactivate', [CommitteeController::class, 'deactivate']);
+            Route::post('/committees/{committee}/reactivate', [CommitteeController::class, 'reactivate']);
+            Route::post('/committees/{committee}/members', [CommitteeController::class, 'addMember']);
+            Route::delete('/committees/{committee}/members/{user}', [CommitteeController::class, 'removeMember']);
+            Route::put('/committees/{committee}/members/{user}', [CommitteeController::class, 'updateMemberRole']);
+            Route::get('/committees/{committee}/availability', [CommitteeController::class, 'availability']);
+            Route::get('/supervisors/for-committee', [CommitteeController::class, 'availableSupervisors']);
+            Route::post('/defense-sessions/{defenseSession}/assign-committee', [CommitteeController::class, 'assignCommittee']);
+        });
 
         Route::get('/projects', [ProjectController::class, 'index']);
         Route::get('/project/{id}', [ProjectController::class, 'show']);
         Route::put('/project/update/{id}', [ProjectController::class, 'update']);
         Route::delete('/project/delete/{id}', [ProjectController::class, 'delete']);
+        Route::post('/project/{id}/leave', [ProjectController::class, 'leave']);
 
         Route::get('/project/{id}/progress', [ProjectController::class, 'progress']);
         Route::post('/project/{id}/sync-commits', [ProjectController::class, 'syncCommits']);
@@ -213,5 +288,34 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureUserHasUniversity:
 
         Route::middleware(['role:student', 'throttle:ai-tasks'])
             ->post('/projects/{project}/generate-tasks', [AITaskController::class, 'generate']);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Scheduling Infrastructure (Phase 7)
+        |--------------------------------------------------------------------------
+        */
+        Route::middleware(['role:supervisor'])->group(function () {
+            Route::get('/scheduling/availability-context', [DoctorAvailabilityController::class, 'availabilityContext']);
+            Route::apiResource('doctor-availabilities', DoctorAvailabilityController::class);
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Scheduling Decision Support (Phase 9)
+        |--------------------------------------------------------------------------
+        */
+        Route::middleware(['role:admin'])->prefix('schedules')->group(function () {
+            Route::get('/readiness', [ScheduleController::class, 'readiness']);
+            Route::post('/generate', [ScheduleController::class, 'generate']);
+            Route::get('/status/{stageId}', [ScheduleController::class, 'status']);
+            Route::post('/approve', [ScheduleController::class, 'approve']);
+            Route::post('/{id}/void', [ScheduleController::class, 'void']);
+            Route::get('/history', [ScheduleController::class, 'history']);
+        });
+
+        Route::middleware(['role:supervisor,admin'])->get(
+            '/schedules/my-sessions',
+            [ScheduleController::class, 'mySessions']
+        );
     });
 });

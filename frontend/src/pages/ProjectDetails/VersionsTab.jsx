@@ -41,6 +41,7 @@ export default function VersionsTab({
   setDialogConfig,
   setDialogLoading,
   closeDialog,
+  compact = false,
 }) {
   const { user, authHeaders, apiFetch, API_BASE_URL } = useAuth();
   const { t, lang } = useLanguage();
@@ -258,6 +259,7 @@ export default function VersionsTab({
       title={t("projectDetails.versionsTitle")}
       subtitle={t("projectDetails.versionsSubtitle")}
       accent="#F59E0B"
+      compact={compact}
     >
       {showNoRepoWarning && (
         <Alert

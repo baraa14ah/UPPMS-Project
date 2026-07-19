@@ -36,6 +36,7 @@ export default function CommentsTab({
   setDialogLoading,
   closeDialog,
   variant = "tab",
+  compact = false,
 }) {
   const { authHeaders, apiFetch, API_BASE_URL, user } = useAuth();
   const { t, lang } = useLanguage();
@@ -172,9 +173,13 @@ export default function CommentsTab({
     });
   };
 
-  const avatarSize = isSidebar ? 32 : 40;
-  const msgFontSize = isSidebar ? "0.82rem" : "0.95rem";
-  const chatHeight = isSidebar ? undefined : { xs: "min(68vh, 640px)", md: "min(72vh, 720px)" };
+  const avatarSize = isSidebar ? 32 : compact ? 36 : 40;
+  const msgFontSize = isSidebar ? "0.82rem" : compact ? "0.9rem" : "0.95rem";
+  const chatHeight = isSidebar
+    ? undefined
+    : compact
+      ? { xs: "min(70vh, 680px)", md: "min(74vh, 760px)" }
+      : { xs: "min(68vh, 640px)", md: "min(72vh, 720px)" };
 
   const chatPanel = (
     <Box
@@ -183,8 +188,8 @@ export default function CommentsTab({
         flexDirection: "column",
         flex: 1,
         height: chatHeight,
-        minHeight: isSidebar ? undefined : { xs: 420, md: 480 },
-        borderRadius: isSidebar ? 0 : 3,
+        minHeight: isSidebar ? undefined : compact ? { xs: 460, md: 520 } : { xs: 420, md: 480 },
+        borderRadius: isSidebar ? 0 : compact ? 2.5 : 3,
         position: "relative",
         border: isSidebar ? "none" : "1px solid",
         borderColor: "divider",
@@ -546,6 +551,7 @@ export default function CommentsTab({
       subtitle={t("projectDetails.commentsSubtitle")}
       accent="#8B5CF6"
       noPadding
+      compact={compact}
       actions={
         <Chip
           size="small"

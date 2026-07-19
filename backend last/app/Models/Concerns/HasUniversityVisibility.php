@@ -83,6 +83,56 @@ trait HasUniversityVisibility
         $this->syncSupervisorUniversities($universityIds, 'pending');
     }
 
+    /** Attaches supervisor universities with active status (XML-validated registration). */
+    public function attachSupervisorUniversitiesActive(array $universityIds): void
+    {
+        $this->syncSupervisorUniversities($universityIds, 'active');
+    }
+
+    /** Applies mixed active/pending supervisor memberships after XML-aware registration. */
+    public function syncSupervisorUniversitiesMixed(array $activeUniversityIds, array $pendingUniversityIds): void
+    {
+        if (!$this->isSupervisorRole()) {
+            return;
+        }
+
+        $activeIds = array_values(array_unique(array_filter(array_map('intval', $activeUniversityIds))));
+        $pendingIds = array_values(array_unique(array_filter(array_map('intval', $pendingUniversityIds))));
+
+        $existing = $this->supervisorUniversities()
+            ->whereIn('universities.id', array_merge($activeIds, $pendingIds))
+            ->get()
+            ->keyBy('id');
+
+        $sync = [];
+        foreach ($activeIds as $id) {
+            $sync[$id] = [
+                'status'                => 'active',
+                'approved_at'           => now(),
+                'approved_by'           => null,
+                'accepting_supervision' => (bool) ($existing->get($id)?->pivot->accepting_supervision ?? true),
+            ];
+        }
+        foreach ($pendingIds as $id) {
+            $sync[$id] = [
+                'status'                => 'pending',
+                'approved_at'           => null,
+                'approved_by'           => null,
+                'accepting_supervision' => (bool) ($existing->get($id)?->pivot->accepting_supervision ?? true),
+            ];
+        }
+
+        if (empty($sync)) {
+            return;
+        }
+
+        $this->supervisorUniversities()->sync($sync);
+
+        if (!$this->university_id) {
+            $this->forceFill(['university_id' => $activeIds[0] ?? $pendingIds[0]])->save();
+        }
+    }
+
     /** Returns membership status for the given university. */
     public function membershipStatusForUniversity(?int $universityId): string
     {
@@ -123,6 +173,34 @@ trait HasUniversityVisibility
         $this->save();
     }
 
+    /** Repairs mismatched supervisor primary university and pivot links. */
+    public function repairSupervisorUniversityLinks(): static
+    {
+        if (!$this->isSupervisorRole()) {
+            return $this;
+        }
+
+        $this->loadMissing('supervisorUniversities', 'university');
+
+        if ($this->supervisorUniversities->isEmpty() && $this->university_id) {
+            $status = ($this->status ?? 'pending') === 'active' ? 'active' : 'pending';
+            $this->syncSupervisorUniversities([(int) $this->university_id], $status);
+            $this->load('supervisorUniversities');
+        }
+
+        if (!$this->university_id && $this->supervisorUniversities->isNotEmpty()) {
+            $active = $this->supervisorUniversities->first(
+                fn ($uni) => ($uni->pivot->status ?? 'pending') === 'active',
+            );
+            $primary = $active ?? $this->supervisorUniversities->first();
+            if ($primary) {
+                $this->forceFill(['university_id' => $primary->id])->save();
+            }
+        }
+
+        return $this;
+    }
+
     /** Adds supervisor membership and active university names to the model. */
     public function enrichSupervisorMembershipPayload(): static
     {
@@ -132,7 +210,8 @@ trait HasUniversityVisibility
             return $this;
         }
 
-        $this->loadMissing('supervisorUniversities');
+        $this->repairSupervisorUniversityLinks();
+        $this->loadMissing('supervisorUniversities', 'university');
 
         $memberships = $this->supervisorUniversities
             ->map(fn ($uni) => [
@@ -144,6 +223,16 @@ trait HasUniversityVisibility
             ])
             ->values()
             ->all();
+
+        if (empty($memberships) && $this->university_id && $this->university) {
+            $memberships = [[
+                'id'                    => $this->university_id,
+                'name'                  => $this->university->name,
+                'status'                => ($this->status ?? 'pending') === 'active' ? 'active' : ($this->status ?? 'pending'),
+                'approved_at'           => null,
+                'accepting_supervision' => true,
+            ]];
+        }
 
         $this->setAttribute('supervisor_memberships', $memberships);
         $this->setAttribute(

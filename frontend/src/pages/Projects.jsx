@@ -11,9 +11,7 @@ import {
   Button,
   Stack,
   Chip,
-  CircularProgress,
   Alert,
-  Grid,
   LinearProgress,
   Paper,
   Avatar,
@@ -30,8 +28,12 @@ import HourglassBottomRoundedIcon from "@mui/icons-material/HourglassBottomRound
 import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CreateNewFolderRoundedIcon from "@mui/icons-material/CreateNewFolderRounded";
+import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
+import ProjectSummaryCards from "../components/ProjectSummaryCards";
 import ListToolbar from "../components/ListToolbar";
+import ProjectsGridSkeleton from "../components/loading/ProjectsGridSkeleton";
 import PageHeader from "../components/PageHeader";
+import DefenseWorkflowGuide from "../components/defense/DefenseWorkflowGuide";
 import CreateProjectDialog from "../components/CreateProjectDialog";
 import { useLanguage } from "../context/LanguageContext";
 import {
@@ -97,11 +99,24 @@ export default function Projects() {
   const [createOpen, setCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [phaseFilter, setPhaseFilter] = useState("");
 
   const roleName = String(user?.role?.name || user?.role || "").toLowerCase();
   const currentUserId = Number(user?.user?.id || user?.id);
-  const canCreateProject = roleName === "student" || roleName === "admin";
+  const canCreateProject = roleName === "admin";
   const isStudent = roleName === "student";
+  const canFilterByPhase = roleName === "admin" || roleName === "supervisor";
+
+  const hasActiveProject = useMemo(() => {
+    if (!isStudent) return false;
+    return projects.some((p) => {
+      if (Number(p.user_id) !== currentUserId) return false;
+      const status = derivedStatusFromProject(p);
+      return !["completed", "cancelled", "closed"].includes(status);
+    });
+  }, [projects, currentUserId, isStudent]);
+
+  const canSubmitProposal = isStudent && !hasActiveProject;
 
   /** Loads all projects visible to the current user. */
   const fetchProjects = async () => {
@@ -164,7 +179,9 @@ export default function Projects() {
         (p) =>
           (p.title || "").toLowerCase().includes(q) ||
           (p.user?.name || "").toLowerCase().includes(q) ||
-          (p.supervisor?.name || "").toLowerCase().includes(q),
+          (p.supervisor?.name || "").toLowerCase().includes(q) ||
+          (p.track_stage?.phase_name || "").toLowerCase().includes(q) ||
+          (p.track_stage?.step_name || "").toLowerCase().includes(q),
       );
     }
     if (statusFilter) {
@@ -172,11 +189,33 @@ export default function Projects() {
         (p) => derivedStatusFromProject(p) === statusFilter,
       );
     }
+    if (phaseFilter) {
+      filtered = filtered.filter(
+        (p) => String(p.track_stage?.phase_id || "") === String(phaseFilter),
+      );
+    }
     return filtered;
-  }, [projects, searchQuery, statusFilter]);
+  }, [projects, searchQuery, statusFilter, phaseFilter]);
+
+  const phaseOptions = useMemo(() => {
+    const map = new Map();
+    projects.forEach((p) => {
+      const id = p?.track_stage?.phase_id;
+      const name = p?.track_stage?.phase_name;
+      if (id && name) map.set(String(id), name);
+    });
+    return [...map.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [projects]);
 
   const stats = useMemo(() => {
-    const counts = { total: projects.length, pending: 0, in_progress: 0, completed: 0 };
+    const counts = {
+      total: projects.length,
+      pending: 0,
+      in_progress: 0,
+      completed: 0,
+    };
     projects.forEach((p) => {
       const s = derivedStatusFromProject(p);
       if (counts[s] != null) counts[s] += 1;
@@ -184,40 +223,9 @@ export default function Projects() {
     return counts;
   }, [projects]);
 
-  const quickFilters = [
-    { key: "", label: t("common.all"), count: stats.total, color: NAVY },
-    { key: "pending", label: t("dashboard.pending"), count: stats.pending, color: STATUS_COLORS.pending },
-    { key: "in_progress", label: t("dashboard.inProgress"), count: stats.in_progress, color: STATUS_COLORS.in_progress },
-    { key: "completed", label: t("dashboard.completed"), count: stats.completed, color: STATUS_COLORS.completed },
-  ];
-
-  /** Shows the user's relationship to a project (owner, supervisor, member). */
-  const relationChip = (p) => {
-    if (!currentUserId) return null;
-    const isOwner = Number(p.user_id) === currentUserId;
-    const isSupervisor =
-      Number(p.supervisor_id) === currentUserId ||
-      Number(p.supervisor?.id) === currentUserId;
-    if (isOwner) return <Chip size="small" color="warning" label={t("projects.owner")} sx={{ fontWeight: 800 }} />;
-    if (isSupervisor) return <Chip size="small" color="info" label={t("projects.supervisor")} sx={{ fontWeight: 800 }} />;
-    return <Chip size="small" color="success" label={t("projects.member")} sx={{ fontWeight: 800 }} />;
-  };
-
-  /** Renders a localized status chip for a project. */
-  const statusChip = (status) => {
-    const s = String(status || "pending").toLowerCase();
-    if (s === "completed")
-      return <Chip size="small" color="success" label={t("dashboard.completed")} sx={{ fontWeight: 800 }} />;
-    if (s === "in_progress")
-      return <Chip size="small" color="info" label={t("dashboard.inProgress")} sx={{ fontWeight: 800 }} />;
-    if (s === "pending")
-      return <Chip size="small" color="warning" label={t("dashboard.pending")} sx={{ fontWeight: 800 }} />;
-    return <Chip size="small" variant="outlined" label={status || "—"} />;
-  };
-
   const statCards = [
     {
-      key: "total",
+      key: "",
       label: t("projects.statsTotal"),
       value: stats.total,
       icon: FolderRoundedIcon,
@@ -246,15 +254,98 @@ export default function Projects() {
     },
   ];
 
+  /** Shows the user's relationship to a project (owner, supervisor, member). */
+  const relationChip = (p) => {
+    if (!currentUserId) return null;
+    const isOwner = Number(p.user_id) === currentUserId;
+    const isSupervisor =
+      Number(p.supervisor_id) === currentUserId ||
+      Number(p.supervisor?.id) === currentUserId;
+    if (isOwner)
+      return (
+        <Chip
+          size="small"
+          color="warning"
+          label={t("projects.owner")}
+          sx={{ fontWeight: 800 }}
+        />
+      );
+    if (isSupervisor)
+      return (
+        <Chip
+          size="small"
+          color="info"
+          label={t("projects.supervisor")}
+          sx={{ fontWeight: 800 }}
+        />
+      );
+    return (
+      <Chip
+        size="small"
+        color="success"
+        label={t("projects.member")}
+        sx={{ fontWeight: 800 }}
+      />
+    );
+  };
+
+  /** Renders a localized status chip for a project. */
+  const statusChip = (status) => {
+    const s = String(status || "pending").toLowerCase();
+    if (s === "completed")
+      return (
+        <Chip
+          size="small"
+          color="success"
+          label={t("dashboard.completed")}
+          sx={{ fontWeight: 800 }}
+        />
+      );
+    if (s === "in_progress")
+      return (
+        <Chip
+          size="small"
+          color="info"
+          label={t("dashboard.inProgress")}
+          sx={{ fontWeight: 800 }}
+        />
+      );
+    if (s === "pending")
+      return (
+        <Chip
+          size="small"
+          color="warning"
+          label={t("dashboard.pending")}
+          sx={{ fontWeight: 800 }}
+        />
+      );
+    return <Chip size="small" variant="outlined" label={status || "—"} />;
+  };
+
   return (
-    <Box sx={{ maxWidth: 1320, mx: "auto" }}>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
         title={t("projects.title")}
         subtitle={t("projects.subtitle")}
         icon={<FolderRoundedIcon />}
         roleName={roleName}
         actions={
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", sm: "auto" } }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            sx={{ width: { xs: "100%", sm: "auto" } }}
+          >
+            {canSubmitProposal && (
+              <Button
+                component={Link}
+                to="/dashboard/proposals"
+                variant="outlined"
+                startIcon={<DescriptionRoundedIcon />}
+                sx={headerActionBtnSx}
+              >
+                {t("proposals.submitProposal")}
+              </Button>
+            )}
             {canCreateProject && (
               <Button
                 variant="outlined"
@@ -277,93 +368,35 @@ export default function Projects() {
         }
       />
 
-      <Grid container spacing={2} sx={{ mb: 2.5 }}>
-        {statCards.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Grid size={{ xs: 6, md: 3 }} key={item.key}>
-              <Paper
-                elevation={0}
-                sx={{
-                  ...sectionPaperSx,
-                  p: 2,
-                  borderTop: "3px solid",
-                  borderTopColor: item.color,
-                  height: "100%",
-                }}
-              >
-                <Stack direction="row" spacing={1.5} alignItems="center">
-                  <Box
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 2,
-                      display: "grid",
-                      placeItems: "center",
-                      bgcolor: alpha(item.color, 0.12),
-                      color: item.color,
-                    }}
-                  >
-                    <Icon fontSize="small" />
-                  </Box>
-                  <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
-                      {item.value}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                      {item.label}
-                    </Typography>
-                  </Box>
-                </Stack>
-              </Paper>
-            </Grid>
-          );
-        })}
-      </Grid>
+      {roleName === "admin" && <DefenseWorkflowGuide variant="result" />}
+
+      <ProjectSummaryCards
+        items={statCards}
+        activeKey={statusFilter}
+        onSelect={setStatusFilter}
+        loading={loading}
+      />
 
       <ListToolbar
         search={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder={t("projects.searchPlaceholder")}
-        filters={[
-          {
-            key: "status",
-            label: t("projects.statusFilter"),
-            value: statusFilter,
-            onChange: setStatusFilter,
-            options: [
-              { value: "pending", label: t("dashboard.pending") },
-              { value: "in_progress", label: t("dashboard.inProgress") },
-              { value: "completed", label: t("dashboard.completed") },
-            ],
-          },
-        ]}
+        filters={
+          canFilterByPhase && phaseOptions.length > 0
+            ? [
+                {
+                  key: "phase",
+                  label: t("projects.filterByPhase"),
+                  value: phaseFilter,
+                  onChange: setPhaseFilter,
+                  options: phaseOptions,
+                },
+              ]
+            : []
+        }
       />
 
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
-        {quickFilters.map((f) => (
-          <Chip
-            key={f.key || "all"}
-            label={`${f.label} (${f.count})`}
-            clickable
-            onClick={() => setStatusFilter(f.key)}
-            variant={statusFilter === f.key ? "filled" : "outlined"}
-            sx={{
-              fontWeight: 800,
-              ...(statusFilter === f.key
-                ? { bgcolor: alpha(f.color, 0.14), color: f.color, borderColor: alpha(f.color, 0.35) }
-                : {}),
-            }}
-          />
-        ))}
-      </Stack>
-
-      {loading && (
-        <Paper elevation={0} sx={{ ...sectionPaperSx, textAlign: "center", py: 6 }}>
-          <CircularProgress sx={{ mb: 1.5 }} />
-          <Typography fontWeight={700}>{t("common.loading")}</Typography>
-        </Paper>
-      )}
+      {loading && <ProjectsGridSkeleton />}
 
       {!loading && error && (
         <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
@@ -382,19 +415,32 @@ export default function Projects() {
             borderStyle: "dashed",
           }}
         >
-          <CreateNewFolderRoundedIcon sx={{ fontSize: 64, color: "text.disabled", mb: 1.5 }} />
+          <CreateNewFolderRoundedIcon
+            sx={{ fontSize: 64, color: "text.disabled", mb: 1.5 }}
+          />
           <Typography sx={{ fontWeight: 900, fontSize: "1.15rem", mb: 0.5 }}>
             {t("projects.emptyTitle")}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: "auto", mb: 2.5 }}>
-            {canCreateProject ? t("projects.emptyHint") : t("projects.noProjects")}
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ maxWidth: 420, mx: "auto", mb: 2.5 }}
+          >
+            {canCreateProject
+              ? t("projects.emptyHint")
+              : t("projects.noProjects")}
           </Typography>
           {canCreateProject && (
             <Button
               variant="contained"
               startIcon={<AddRoundedIcon />}
               onClick={() => setCreateOpen(true)}
-              sx={{ ...btnPrimarySx, borderRadius: 2, textTransform: "none", px: 3 }}
+              sx={{
+                ...btnPrimarySx,
+                borderRadius: 2,
+                textTransform: "none",
+                px: 3,
+              }}
             >
               {t("projects.createNew")}
             </Button>
@@ -404,15 +450,32 @@ export default function Projects() {
 
       {!loading && !error && visibleProjects.length > 0 && (
         <Paper elevation={0} sx={{ ...sectionPaperSx, mb: 0 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            sx={{ mb: 2.5 }}
+          >
             <Stack direction="row" spacing={1.5} alignItems="center">
-              <Typography sx={{ fontWeight: 900, fontSize: "1.05rem", color: "text.primary" }}>
+              <Typography
+                sx={{
+                  fontWeight: 900,
+                  fontSize: "1.05rem",
+                  color: "text.primary",
+                }}
+              >
                 {t("projects.listTitle")}
               </Typography>
               <Chip
-                label={t("projects.countBadge", { count: visibleProjects.length })}
+                label={t("projects.countBadge", {
+                  count: visibleProjects.length,
+                })}
                 size="small"
-                sx={{ fontWeight: 800, bgcolor: alpha(BLUE, 0.12), color: BLUE }}
+                sx={{
+                  fontWeight: 800,
+                  bgcolor: alpha(BLUE, 0.12),
+                  color: BLUE,
+                }}
               />
             </Stack>
           </Stack>
@@ -461,155 +524,232 @@ export default function Projects() {
                     position: "relative",
                   }}
                 >
-                    <CardActionArea
-                      component={Link}
-                      to={`/dashboard/projects/${p.id}`}
-                      onMouseEnter={prefetchProjectDetails}
-                      onFocus={prefetchProjectDetails}
+                  <CardActionArea
+                    component={Link}
+                    to={`/dashboard/projects/${p.id}`}
+                    onMouseEnter={prefetchProjectDetails}
+                    onFocus={prefetchProjectDetails}
+                    sx={{
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "stretch",
+                    }}
+                  >
+                    <CardContent
                       sx={{
-                        height: "100%",
+                        flex: 1,
                         display: "flex",
                         flexDirection: "column",
-                        alignItems: "stretch",
+                        p: compactCard ? { xs: 1.75, sm: 2.5 } : 2.5,
+                        "&:last-child": {
+                          pb: compactCard ? { xs: 1.75, sm: 2.5 } : 2.5,
+                        },
                       }}
                     >
-                      <CardContent
-                        sx={{
-                          flex: 1,
-                          display: "flex",
-                          flexDirection: "column",
-                          p: compactCard ? { xs: 1.75, sm: 2.5 } : 2.5,
-                          "&:last-child": { pb: compactCard ? { xs: 1.75, sm: 2.5 } : 2.5 },
-                        }}
+                      <Stack
+                        direction="row"
+                        spacing={1.25}
+                        alignItems="flex-start"
+                        sx={{ mb: 1.5 }}
                       >
-                        <Stack direction="row" spacing={1.25} alignItems="flex-start" sx={{ mb: 1.5 }}>
-                          <Avatar
+                        <Avatar
+                          sx={{
+                            width: 44,
+                            height: 44,
+                            fontWeight: 900,
+                            bgcolor: alpha(accent, 0.15),
+                            color: accent,
+                            border: "1px solid",
+                            borderColor: alpha(accent, 0.3),
+                          }}
+                        >
+                          {titleInitial}
+                        </Avatar>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography
                             sx={{
-                              width: 44,
-                              height: 44,
                               fontWeight: 900,
-                              bgcolor: alpha(accent, 0.15),
-                              color: accent,
-                              border: "1px solid",
-                              borderColor: alpha(accent, 0.3),
+                              fontSize: "1.05rem",
+                              lineHeight: 1.35,
+                              color: "text.primary",
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
                             }}
                           >
-                            {titleInitial}
-                          </Avatar>
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            {p.title || "—"}
+                          </Typography>
+                          {createdLabel && (
                             <Typography
-                              sx={{
-                                fontWeight: 900,
-                                fontSize: "1.05rem",
-                                lineHeight: 1.35,
-                                color: "text.primary",
-                                display: "-webkit-box",
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: "vertical",
-                                overflow: "hidden",
-                              }}
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ fontWeight: 600 }}
                             >
-                              {p.title || "—"}
+                              {createdLabel}
                             </Typography>
-                            {createdLabel && (
-                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                                {createdLabel}
-                              </Typography>
-                            )}
-                          </Box>
-                        </Stack>
-
-                        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 1.25 }}>
-                          {statusChip(status)}
-                          {relationChip(p)}
-                          {totalTasks > 0 && (
-                            <Chip
-                              size="small"
-                              icon={<TaskAltRoundedIcon sx={{ fontSize: "14px !important" }} />}
-                              label={t("projects.tasksCount", { count: totalTasks, done: completedTasks })}
-                              variant="outlined"
-                              sx={{ fontWeight: 700 }}
-                            />
                           )}
-                        </Stack>
-
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{
-                            mb: 1.75,
-                            flex: 1,
-                            display: "-webkit-box",
-                            WebkitLineClamp: compactCard ? 2 : 3,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                            lineHeight: 1.65,
-                            fontWeight: 500,
-                          }}
-                        >
-                          {p.description || t("projects.noDescription")}
-                        </Typography>
-
-                        <Stack spacing={0.85} sx={{ mb: 2 }}>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <PersonRoundedIcon sx={{ fontSize: 17, color: "text.secondary" }} />
-                            <Typography variant="body2" color="text.secondary" sx={textEllipsisSx}>
-                              {t("projects.ownerLabel")}:{" "}
-                              <Typography component="span" fontWeight={800} color="text.primary">
-                                {p.user?.name || "—"}
-                              </Typography>
-                            </Typography>
-                          </Stack>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <SupervisorAccountRoundedIcon sx={{ fontSize: 17, color: "text.secondary" }} />
-                            <Typography variant="body2" color="text.secondary" sx={textEllipsisSx}>
-                              {t("projects.supervisorLabel")}:{" "}
-                              <Typography component="span" fontWeight={800} color="text.primary">
-                                {p.supervisor?.name || t("projects.noSupervisor")}
-                              </Typography>
-                            </Typography>
-                          </Stack>
-                        </Stack>
-
-                        <Box sx={{ mb: 1.5 }}>
-                          <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                            <Typography variant="caption" fontWeight={800} color="text.secondary">
-                              {t("projects.progress")}
-                            </Typography>
-                            <Typography variant="caption" fontWeight={900} sx={{ color: accent }}>
-                              {pct}%
-                            </Typography>
-                          </Stack>
-                          <LinearProgress
-                            variant="determinate"
-                            value={pct}
-                            sx={{
-                              height: 9,
-                              borderRadius: 99,
-                              bgcolor: alpha(accent, 0.12),
-                              "& .MuiLinearProgress-bar": { bgcolor: accent, borderRadius: 99 },
-                            }}
-                          />
                         </Box>
+                      </Stack>
 
-                        <Button
-                          component="span"
-                          variant="contained"
-                          fullWidth
-                          endIcon={<ArrowOutwardRoundedIcon />}
-                          sx={{
-                            ...btnPrimarySx,
-                            mt: "auto",
-                            borderRadius: 2,
-                            py: 1.1,
-                            pointerEvents: "none",
-                          }}
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        flexWrap="wrap"
+                        useFlexGap
+                        sx={{ mb: 1.25 }}
+                      >
+                        {p.track_stage?.phase_name && (
+                          <Chip
+                            size="small"
+                            color="secondary"
+                            variant="outlined"
+                            label={p.track_stage.phase_name}
+                            sx={{ fontWeight: 800 }}
+                          />
+                        )}
+                        {(p.user?.status === "graduated" ||
+                          (p.status === "completed" && !p.track_stage)) && (
+                          <Chip
+                            size="small"
+                            color="success"
+                            label={t("projectDetails.graduateBadge")}
+                            sx={{ fontWeight: 800 }}
+                          />
+                        )}
+                        {statusChip(status)}
+                        {relationChip(p)}
+                        {totalTasks > 0 && (
+                          <Chip
+                            size="small"
+                            icon={
+                              <TaskAltRoundedIcon
+                                sx={{ fontSize: "14px !important" }}
+                              />
+                            }
+                            label={t("projects.tasksCount", {
+                              count: totalTasks,
+                              done: completedTasks,
+                            })}
+                            variant="outlined"
+                            sx={{ fontWeight: 700 }}
+                          />
+                        )}
+                      </Stack>
+
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          mb: 1.75,
+                          flex: 1,
+                          display: "-webkit-box",
+                          WebkitLineClamp: compactCard ? 2 : 3,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                          lineHeight: 1.65,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {p.description || t("projects.noDescription")}
+                      </Typography>
+
+                      <Stack spacing={0.85} sx={{ mb: 2 }}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <PersonRoundedIcon
+                            sx={{ fontSize: 17, color: "text.secondary" }}
+                          />
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={textEllipsisSx}
+                          >
+                            {t("projects.ownerLabel")}:{" "}
+                            <Typography
+                              component="span"
+                              fontWeight={800}
+                              color="text.primary"
+                            >
+                              {p.user?.name || "—"}
+                            </Typography>
+                          </Typography>
+                        </Stack>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <SupervisorAccountRoundedIcon
+                            sx={{ fontSize: 17, color: "text.secondary" }}
+                          />
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={textEllipsisSx}
+                          >
+                            {t("projects.supervisorLabel")}:{" "}
+                            <Typography
+                              component="span"
+                              fontWeight={800}
+                              color="text.primary"
+                            >
+                              {p.supervisor?.name || t("projects.noSupervisor")}
+                            </Typography>
+                          </Typography>
+                        </Stack>
+                      </Stack>
+
+                      <Box sx={{ mb: 1.5 }}>
+                        <Stack
+                          direction="row"
+                          justifyContent="space-between"
+                          sx={{ mb: 0.5 }}
                         >
-                          {t("projects.open")}
-                        </Button>
-                      </CardContent>
-                    </CardActionArea>
-                  </Card>
+                          <Typography
+                            variant="caption"
+                            fontWeight={800}
+                            color="text.secondary"
+                          >
+                            {t("projects.progress")}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            fontWeight={900}
+                            sx={{ color: accent }}
+                          >
+                            {pct}%
+                          </Typography>
+                        </Stack>
+                        <LinearProgress
+                          variant="determinate"
+                          value={pct}
+                          sx={{
+                            height: 9,
+                            borderRadius: 99,
+                            bgcolor: alpha(accent, 0.12),
+                            "& .MuiLinearProgress-bar": {
+                              bgcolor: accent,
+                              borderRadius: 99,
+                            },
+                          }}
+                        />
+                      </Box>
+
+                      <Button
+                        component="span"
+                        variant="contained"
+                        fullWidth
+                        endIcon={<ArrowOutwardRoundedIcon />}
+                        sx={{
+                          ...btnPrimarySx,
+                          mt: "auto",
+                          borderRadius: 2,
+                          py: 1.1,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        {t("projects.open")}
+                      </Button>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
               );
             })}
           </Box>

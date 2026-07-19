@@ -69,9 +69,7 @@ export const dashboardCardSx = {
   borderColor: "divider",
   bgcolor: "background.paper",
   boxShadow: (theme) =>
-    theme.palette.mode === "dark"
-      ? "none"
-      : "0 4px 20px rgba(15,23,42,0.06)",
+    theme.palette.mode === "dark" ? "none" : "0 4px 20px rgba(15,23,42,0.06)",
   display: "flex",
   flexDirection: "column",
   transition: "transform 0.2s ease, box-shadow 0.2s ease",
@@ -105,4 +103,17 @@ export const accentTop = (color) => ({
 export const headerActionsBoxSx = {
   width: { xs: "100%", sm: "auto" },
   "& .MuiButton-root": headerActionBtnSx,
+};
+
+/** Standard admin page width — layout already applies outer padding. */
+export const pageContainerSx = {
+  width: "100%",
+  maxWidth: 1400,
+  mx: "auto",
+};
+
+/** Horizontally scrollable tables on small screens. */
+export const tableContainerSx = {
+  overflowX: "auto",
+  width: "100%",
 };

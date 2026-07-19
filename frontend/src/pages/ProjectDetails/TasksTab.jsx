@@ -38,6 +38,7 @@ export default function TasksTab({
   setDialogConfig,
   setDialogLoading,
   closeDialog,
+  compact = false,
 }) {
   const { authHeaders, apiFetch, API_BASE_URL } = useAuth();
   const { t, lang, isRtl } = useLanguage();
@@ -376,10 +377,10 @@ export default function TasksTab({
           onDragOver={handleDragOver}
           onDrop={(e) => handleDrop(e, statusValue)}
           sx={{
-            p: 2,
+            p: compact ? 1.5 : 2,
             bgcolor: isDark ? "background.default" : "#fdfdfd",
-            borderRadius: "30px",
-            minHeight: "450px",
+            borderRadius: compact ? "20px" : "30px",
+            minHeight: compact ? "380px" : "450px",
             height: "100%",
             border: "1px solid",
             borderColor: "divider",
@@ -392,7 +393,7 @@ export default function TasksTab({
             direction="row"
             justifyContent="space-between"
             alignItems="center"
-            sx={{ mb: 3, px: 1 }}
+            sx={{ mb: compact ? 1.75 : 3, px: 1 }}
           >
             <Typography
               sx={{
@@ -629,6 +630,7 @@ export default function TasksTab({
       subtitle={t("projectDetails.tasksSubtitle")}
       accent="#3B82F6"
       sx={{ mt: 0 }}
+      compact={compact}
       actions={
         overdueCount > 0 ? (
           <Chip
@@ -646,7 +648,7 @@ export default function TasksTab({
         )
       }
     >
-      <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 2.5, gap: 0.75 }}>
+      <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: compact ? 1.5 : 2.5, gap: 0.75 }}>
         {filterChips.map(({ key, label, count, color }) => (
           <Chip
             key={key}

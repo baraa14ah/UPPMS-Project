@@ -1,0 +1,41 @@
+@startuml 06-versions-github
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam actorStyle awesome
+skinparam defaultFontName Arial
+skinparam usecase {
+  BackgroundColor #EEF4FF
+  BorderColor #1D4ED8
+  FontSize 13
+}
+skinparam actor {
+  FontSize 13
+  FontStyle bold
+}
+
+title UPPMS — Versions & GitHub
+
+actor Student
+actor Supervisor
+actor GitHub <<external>>
+
+rectangle "UPPMS" {
+  usecase "UC-38 Upload Version" as UC38
+  usecase "UC-39 Manage Versions" as UC39
+  usecase "UC-40 Sync Commits" as UC40
+  usecase "UC-41 Push to GitHub" as UC41
+}
+
+Student --> UC38
+Student --> UC39
+Student --> UC40
+Student --> UC41
+Supervisor --> UC38
+Supervisor --> UC39
+Supervisor --> UC40
+Supervisor --> UC41
+UC40 ..> GitHub
+UC41 ..> GitHub
+
+@enduml
