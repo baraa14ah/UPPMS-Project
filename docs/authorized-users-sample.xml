@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<authorized_users>
+  <!-- Students: register with the SAME email + student_number = university_number -->
+  <student university_number="2024001001" email="ahmad.hassan@spu.edu.sy" full_name="Ahmad Hassan" />
+  <student university_number="2024001002" email="sara.ali@spu.edu.sy" full_name="Sara Ali" />
+  <student university_number="2024001003" email="omar.khalil@spu.edu.sy" full_name="Omar Khalil" />
+  <student university_number="2024001004" email="layan.nasser@spu.edu.sy" full_name="Layan Nasser" />
+  <student university_number="2024001005" email="youssef.farid@spu.edu.sy" full_name="Youssef Farid" />
+  <student university_number="2024001006" email="maya.salim@spu.edu.sy" full_name="Maya Salim" />
+  <student university_number="2024001007" email="kareem.taha@spu.edu.sy" full_name="Kareem Taha" />
+  <student university_number="2024001008" email="nour.ibrahim@spu.edu.sy" full_name="Nour Ibrahim" />
+
+  <!-- Supervisors: register with the SAME email (no university_number) -->
+  <supervisor email="dr.nasser@spu.edu.sy" full_name="Dr. Nasser Mahmoud" />
+  <supervisor email="dr.layla@spu.edu.sy" full_name="Dr. Layla Ibrahim" />
+  <supervisor email="dr.hassan@spu.edu.sy" full_name="Dr. Hassan Omar" />
+  <supervisor email="dr.rania@spu.edu.sy" full_name="Dr. Rania Saleh" />
+</authorized_users>

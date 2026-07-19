@@ -6,7 +6,8 @@ import toast from "react-hot-toast";
 
 import ConfirmDialog from "../components/ConfirmDialog";
 import ListToolbar from "../components/ListToolbar";
-import { btnPrimarySx } from "../styles/dashboardUi";
+import TablePageSkeleton from "../components/loading/TablePageSkeleton";
+import { btnPrimarySx, pageContainerSx, tableContainerSx } from "../styles/dashboardUi";
 import { textEllipsisSx } from "../styles/textEllipsis";
 
 import {
@@ -22,7 +23,6 @@ import {
   TableHead,
   TableRow,
   TableContainer,
-  CircularProgress,
   IconButton,
   Tooltip,
   Dialog,
@@ -50,7 +50,9 @@ import LockResetRoundedIcon from "@mui/icons-material/LockResetRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import VpnKeyRoundedIcon from "@mui/icons-material/VpnKeyRounded";
 import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
+import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { ROLE_THEMES } from "../config/roleTheme";
+import XmlImportPanel from "../components/users/XmlImportPanel";
 
 /** Admin user management page with approval and password requests. */
 export default function Users() {
@@ -214,7 +216,7 @@ export default function Users() {
     if (!token) return;
     if (currentTab === "password_requests") {
       fetchPasswordRequests();
-    } else {
+    } else if (currentTab !== "xml_import") {
       fetchUsers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -223,7 +225,7 @@ export default function Users() {
   /** Switches list tab and syncs the URL search param. */
   const handleTabChange = (event, newValue) => {
     setCurrentTab(newValue);
-    if (newValue === "password_requests" || newValue === "pending") {
+    if (newValue === "password_requests" || newValue === "pending" || newValue === "xml_import") {
       setSearchParams({ tab: newValue });
     } else {
       setSearchParams({});
@@ -586,6 +588,7 @@ export default function Users() {
   };
 
   const isPasswordTab = currentTab === "password_requests";
+  const isXmlTab = currentTab === "xml_import";
   const passwordRequestCount = passwordRequests.length;
   const showPendingAlert =
     isAdmin && pendingUsersCount > 0 && currentTab !== "pending";
@@ -593,7 +596,7 @@ export default function Users() {
     isAdmin && passwordRequestCount > 0 && !isPasswordTab;
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 1400, mx: "auto" }}>
+    <Box sx={pageContainerSx}>
       <Stack
         direction={{ xs: "column", sm: "row" }}
         justifyContent="space-between"
@@ -708,6 +711,14 @@ export default function Users() {
           <Tab label={t("users.tabRejected")} value="rejected" />
           {isAdmin && (
             <Tab
+              icon={<UploadFileRoundedIcon sx={{ fontSize: 18 }} />}
+              iconPosition="start"
+              label={t("users.tabXmlImport")}
+              value="xml_import"
+            />
+          )}
+          {isAdmin && (
+            <Tab
               label={
                 <Stack direction="row" spacing={1} alignItems="center">
                   <span>{t("users.tabPasswordRequests")}</span>
@@ -727,7 +738,7 @@ export default function Users() {
         </Tabs>
       </Box>
 
-      {!isPasswordTab && (
+      {!isPasswordTab && !isXmlTab && (
         <ListToolbar
           search={search}
           onSearchChange={setSearch}
@@ -748,6 +759,9 @@ export default function Users() {
         />
       )}
 
+      {isXmlTab ? (
+        <XmlImportPanel />
+      ) : (
       <Paper
         elevation={0}
         sx={{
@@ -758,9 +772,10 @@ export default function Users() {
       >
         {isPasswordTab ? (
           passwordRequestsLoading ? (
-            <Box sx={{ p: 10, textAlign: "center" }}>
-              <CircularProgress />
-            </Box>
+            <TablePageSkeleton
+              rows={6}
+              columnWidths={["16%", "18%", "12%", "12%", "14%", "16%", "12%"]}
+            />
           ) : passwordRequestsError ? (
             <Box sx={{ p: 5, textAlign: "center" }}>
               <Typography color="error" sx={{ fontWeight: 800, mb: 2 }}>
@@ -780,7 +795,7 @@ export default function Users() {
               </Typography>
             </Box>
           ) : (
-            <TableContainer>
+            <TableContainer sx={tableContainerSx}>
               <Table>
                 <TableHead sx={{ bgcolor: "rgba(0,0,0,0.02)" }}>
                   <TableRow>
@@ -863,21 +878,7 @@ export default function Users() {
             </TableContainer>
           )
         ) : loading ? (
-          <Box
-            sx={{
-              p: 10,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              flexDirection: "column",
-              gap: 2,
-            }}
-          >
-            <CircularProgress />
-            <Typography sx={{ fontWeight: 800 }} color="text.secondary">
-              {t("users.loadingUsers")}
-            </Typography>
-          </Box>
+          <TablePageSkeleton rows={9} />
         ) : error ? (
           <Box sx={{ p: 5, textAlign: "center" }}>
             <Typography color="error" sx={{ fontWeight: 800, mb: 2 }}>
@@ -900,7 +901,7 @@ export default function Users() {
             </Typography>
           </Box>
         ) : (
-          <TableContainer>
+          <TableContainer sx={tableContainerSx}>
             <Table>
               <TableHead sx={{ bgcolor: "rgba(0,0,0,0.02)" }}>
                 <TableRow>
@@ -1024,6 +1025,7 @@ export default function Users() {
           </TableContainer>
         )}
       </Paper>
+      )}
 
       <Dialog
         open={openEdit}

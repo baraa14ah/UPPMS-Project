@@ -16,7 +16,6 @@ import {
   Chip,
   Divider,
   LinearProgress,
-  CircularProgress,
   Alert,
   Table,
   TableBody,
@@ -29,12 +28,14 @@ import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
 import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import SchoolRoundedIcon from "@mui/icons-material/SchoolRounded";
 import ListAltRoundedIcon from "@mui/icons-material/ListAltRounded";
 import HourglassBottomRoundedIcon from "@mui/icons-material/HourglassBottomRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import AutoGraphRoundedIcon from "@mui/icons-material/AutoGraphRounded";
 import PersonAddAltRoundedIcon from "@mui/icons-material/PersonAddAltRounded";
 import GitHubLinkCard from "../components/GitHubLinkCard";
+import DashboardSkeleton from "../components/loading/DashboardSkeleton";
 import { isGithubLinked } from "../utils/githubLink";
 
 /** Shared hover lift effect for dashboard cards. */
@@ -55,6 +56,7 @@ export default function Dashboard() {
     authHeaders,
     apiFetch,
     API_BASE_URL,
+    isGraduated,
   } = useAuth();
   const navigate = useNavigate();
 
@@ -291,6 +293,10 @@ export default function Dashboard() {
     ];
   }, [role, stats, currentConfig, roleTheme, t]);
 
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <Box sx={{ maxWidth: 1400, mx: "auto" }}>
       <PageHeader
@@ -328,6 +334,21 @@ export default function Dashboard() {
         }
       />
 
+      {isGraduated && role === "student" && (
+        <Alert
+          severity="success"
+          icon={<SchoolRoundedIcon />}
+          sx={{ mb: 2.5, borderRadius: 3 }}
+        >
+          <Typography sx={{ fontWeight: 900 }}>
+            {t("projectDetails.graduationTitle")}
+          </Typography>
+          <Typography variant="body2">
+            {t("projectDetails.graduationBody")}
+          </Typography>
+        </Alert>
+      )}
+
       {showGithubSetup && (
         <GitHubLinkCard
           variant="dashboard"
@@ -349,14 +370,7 @@ export default function Dashboard() {
       >
         <Divider sx={{ display: "none" }} />
 
-        {loading ? (
-          <Stack direction="row" spacing={2} alignItems="center">
-            <CircularProgress size={20} />
-            <Typography sx={{ fontWeight: 700 }} color="text.secondary">
-              {t("common.loading")}
-            </Typography>
-          </Stack>
-        ) : error ? (
+        {error ? (
           <Alert severity="error">{error}</Alert>
         ) : (
           <Box
@@ -407,7 +421,7 @@ export default function Dashboard() {
         )}
       </Paper>
 
-      {!loading && !error && (
+      {!error && (
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={2}
@@ -474,7 +488,7 @@ export default function Dashboard() {
         </Stack>
       )}
 
-      {!loading && !error && (
+      {!error && (
         <Stack
           direction={{ xs: "column", lg: "row" }}
           spacing={2}

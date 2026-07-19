@@ -19,6 +19,7 @@ class Project extends Model
         'status',
         'supervisor_id',
         'university_id',
+        'proposal_id',
     ];
 
     /** Returns comments posted on this project. */
@@ -45,6 +46,12 @@ class Project extends Model
         return $this->belongsTo(User::class, 'supervisor_id');
     }
 
+    /** Returns the proposal that initiated this project, if any. */
+    public function proposal()
+    {
+        return $this->belongsTo(ProjectProposal::class, 'proposal_id');
+    }
+
     /** Returns git commits linked to this project. */
     public function commits()
     {
@@ -69,5 +76,22 @@ class Project extends Model
         return $this->belongsToMany(User::class, 'project_members', 'project_id', 'student_id')
                     ->withPivot('status')
                     ->withTimestamps();
+    }
+
+    /** Returns scheduled defense sessions for this project. */
+    public function defenseSessions()
+    {
+        return $this->hasMany(DefenseSession::class);
+    }
+
+    /** Returns the active scheduled defense session, if any. */
+    public function activeDefenseSession()
+    {
+        return $this->hasOne(DefenseSession::class)
+            ->where('status', 'scheduled')
+            ->whereHas('approvedSchedule', function ($query) {
+                $query->withoutGlobalScopes()->where('status', 'active');
+            })
+            ->latest('id');
     }
 }

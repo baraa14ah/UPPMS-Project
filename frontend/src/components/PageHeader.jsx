@@ -34,7 +34,7 @@ export default function PageHeader({
       elevation={0}
       style={gradient ? rtlSafeGradientStyle(gradientValue) : undefined}
       sx={{
-        mb: 3,
+        mb: 2.5,
         borderRadius: 3,
         overflow: "hidden",
         border: "1px solid",
@@ -51,7 +51,9 @@ export default function PageHeader({
               borderColor: "rgba(255,255,255,0.4)",
             }
           : undefined,
-        "& .MuiChip-icon": gradient ? { color: "#FFFFFF !important" } : undefined,
+        "& .MuiChip-icon": gradient
+          ? { color: "#FFFFFF !important" }
+          : undefined,
       }}
     >
       <Stack
@@ -59,15 +61,15 @@ export default function PageHeader({
         alignItems={{ xs: "flex-start", sm: "center" }}
         justifyContent="space-between"
         spacing={2}
-        sx={{ p: { xs: 2, md: 2.5 } }}
+        sx={{ p: { xs: 1.75, md: 2.25 } }}
       >
         <Stack direction="row" spacing={1.5} alignItems="center">
           {icon && (
             <Box
               sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2.5,
+                width: 44,
+                height: 44,
+                borderRadius: 2,
                 display: "grid",
                 placeItems: "center",
                 bgcolor: gradient ? alpha("#fff", 0.14) : roleTheme.accentSoft,
@@ -86,11 +88,11 @@ export default function PageHeader({
               <Typography
                 variant="body2"
                 sx={{
-                  mt: 0.4,
+                  mt: 0.35,
                   opacity: gradient ? 0.92 : 0.75,
                   fontWeight: 500,
                   maxWidth: 560,
-                  lineHeight: 1.65,
+                  lineHeight: 1.6,
                 }}
               >
                 {subtitle}

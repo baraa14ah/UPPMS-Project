@@ -17,7 +17,7 @@ import {
   ExpandLess,
   Bookmark,
   BookmarkBorder,
-  AutoAwesome,
+  DescriptionOutlined,
 } from "@mui/icons-material";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
@@ -105,7 +105,7 @@ export default function IdeaSuggestionCard({
           <LoadingButton
             variant="contained"
             color="primary"
-            startIcon={<AutoAwesome />}
+            startIcon={<DescriptionOutlined />}
             loading={isAdopting}
             loadingPosition="start"
             disabled={adoptDisabled || isAdopting}

@@ -1,0 +1,20 @@
+flowchart TB
+  subgraph Before["Before — Zero Trap"]
+    B1["7 violations → score 0"]
+    B2["3 violations → score 0"]
+    B3["1 violation → score 0"]
+    B4["0 violations → score 785"]
+    B1 -.->|"look equal"| B2
+    B2 -.->|"look equal"| B3
+  end
+
+  subgraph After["After — Penalty + Lex Rank"]
+    A4["0 hard, soft 785 → rank 1"]
+    A3["1 hard, soft 0 → rank 2"]
+    A2["3 hard, soft 0 → rank 3"]
+    A1["7 hard, soft 0 → rank 4"]
+  end
+
+  Compare["Chromosome.compare\n1) hardViolationCount ASC\n2) fitness DESC"]
+  Before --> Compare
+  Compare --> After

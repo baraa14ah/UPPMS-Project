@@ -41,6 +41,13 @@ import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import HourglassEmptyRoundedIcon from "@mui/icons-material/HourglassEmptyRounded";
 
+import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
+import MeetingRoomRoundedIcon from "@mui/icons-material/MeetingRoomRounded";
+import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
+
 /** Super-admin dashboard with platform-wide stats and recent activity. */
 export default function PlatformDashboard() {
   const { t } = useLanguage();
@@ -52,7 +59,7 @@ export default function PlatformDashboard() {
   const [recentUsers, setRecentUsers] = useState([]);
   const [universitiesBreakdown, setUniversitiesBreakdown] = useState([]);
 
-  const statCards = useMemo(
+  const primaryCards = useMemo(
     () => [
       {
         key: "universities",
@@ -85,6 +92,50 @@ export default function PlatformDashboard() {
     ],
     [t],
   );
+
+  const academicCards = useMemo(
+    () => [
+      {
+        key: "tracks",
+        label: t("dashboard.platformTracks"),
+        icon: <TimelineRoundedIcon />,
+        color: "#0EA5E9",
+      },
+      {
+        key: "active_schedules",
+        label: t("dashboard.platformSchedules"),
+        icon: <CalendarMonthRoundedIcon />,
+        color: "#6366F1",
+      },
+      {
+        key: "committees",
+        label: t("dashboard.platformCommittees"),
+        icon: <GroupsRoundedIcon />,
+        color: "#EC4899",
+      },
+      {
+        key: "pending_proposals",
+        label: t("dashboard.platformPendingProposals"),
+        icon: <DescriptionRoundedIcon />,
+        color: "#F97316",
+      },
+      {
+        key: "defense_rooms",
+        label: t("dashboard.platformRooms"),
+        icon: <MeetingRoomRoundedIcon />,
+        color: "#10B981",
+      },
+      {
+        key: "defense_types",
+        label: t("dashboard.platformDefenseTypes"),
+        icon: <CategoryRoundedIcon />,
+        color: "#64748B",
+      },
+    ],
+    [t],
+  );
+
+  const statCards = primaryCards;
 
   /** Loads dashboard stats and recent users from the admin API. */
   const loadData = async () => {
@@ -253,6 +304,46 @@ export default function PlatformDashboard() {
             ))}
           </Box>
 
+          <Typography variant="h6" sx={{ fontWeight: 900, mt: 3.5, mb: 1.5 }}>
+            {t("dashboard.platformAcademicTitle")}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontWeight: 600 }}>
+            {t("dashboard.platformAcademicSubtitle")}
+          </Typography>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "repeat(2, 1fr)",
+                md: "repeat(3, 1fr)",
+              },
+              gap: 2,
+            }}
+          >
+            {academicCards.map((card) => (
+              <Paper
+                key={card.key}
+                elevation={0}
+                sx={{
+                  ...dashboardCardSx,
+                  ...accentTop(card.color),
+                  p: 2.5,
+                }}
+              >
+                <Stack direction="row" spacing={1.25} alignItems="center" sx={{ color: card.color }}>
+                  {card.icon}
+                  <Typography sx={{ fontWeight: 800, color: "text.primary" }}>
+                    {card.label}
+                  </Typography>
+                </Stack>
+                <Typography variant="h4" sx={{ fontWeight: 950, mt: 1.5, color: "text.primary" }}>
+                  {stats?.[card.key] ?? 0}
+                </Typography>
+              </Paper>
+            ))}
+          </Box>
+
           <Paper
             elevation={0}
             sx={{
@@ -325,23 +416,24 @@ export default function PlatformDashboard() {
                 {t("dashboard.platformUsersByUniversitySub")}
               </Typography>
             </Box>
-            <TableContainer>
+            <TableContainer sx={{ overflowX: "auto" }}>
               <Table size="small">
                 <TableHead>
                   <TableRow>
                     <TableCell sx={{ fontWeight: 900 }}>{t("dashboard.platformColUniversity")}</TableCell>
                     <TableCell align="center" sx={{ fontWeight: 900 }}>{t("dashboard.platformColTotalUsers")}</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 900 }}>{t("dashboard.platformColStudents")}</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 900 }}>{t("dashboard.platformColSupervisors")}</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 900 }}>{t("dashboard.platformColAdmins")}</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 900 }}>{t("dashboard.platformColPending")}</TableCell>
                     <TableCell align="center" sx={{ fontWeight: 900 }}>{t("dashboard.platformColProjects")}</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 900 }}>{t("dashboard.platformColTracks")}</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 900 }}>{t("dashboard.platformColSchedules")}</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 900 }}>{t("dashboard.platformColCommittees")}</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 900 }}>{t("dashboard.platformColPendingProposals")}</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 900 }}>{t("dashboard.platformColPending")}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {universitiesBreakdown.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                      <TableCell colSpan={8} align="center" sx={{ py: 4, color: "text.secondary" }}>
                         {t("dashboard.noDataYet")}
                       </TableCell>
                     </TableRow>
@@ -365,19 +457,22 @@ export default function PlatformDashboard() {
                           {row.users_total ?? 0}
                         </TableCell>
                         <TableCell align="center" sx={{ fontWeight: 800 }}>
-                          {row.students ?? 0}
+                          {row.projects ?? 0}
                         </TableCell>
                         <TableCell align="center" sx={{ fontWeight: 800 }}>
-                          {row.supervisors ?? 0}
+                          {row.active_tracks ?? row.tracks ?? 0}
                         </TableCell>
                         <TableCell align="center" sx={{ fontWeight: 800 }}>
-                          {row.admins ?? 0}
+                          {row.active_schedules ?? 0}
+                        </TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 800 }}>
+                          {row.committees ?? 0}
+                        </TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 800, color: "warning.dark" }}>
+                          {row.pending_proposals ?? 0}
                         </TableCell>
                         <TableCell align="center" sx={{ fontWeight: 800, color: "warning.main" }}>
                           {row.pending ?? 0}
-                        </TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 800, color: "secondary.main" }}>
-                          {row.projects ?? 0}
                         </TableCell>
                       </TableRow>
                     ))

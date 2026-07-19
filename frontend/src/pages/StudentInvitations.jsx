@@ -79,7 +79,13 @@ export default function StudentInvitations() {
         { method: "POST", headers: authHeaders() },
       );
       if (!res.ok) {
-        return toast.error(data?.message || t("studentInvitations.acceptError"));
+        const msg =
+          data?.message ||
+          Object.values(data?.errors || {})
+            .flat()
+            .join(" | ") ||
+          t("studentInvitations.acceptError");
+        return toast.error(msg);
       }
 
       setItems((prev) => prev.filter((x) => x.id !== inviteId));
@@ -215,6 +221,9 @@ export default function StudentInvitations() {
                     {t("studentInvitations.sender")}
                   </TableCell>
                   <TableCell sx={{ fontWeight: 900 }}>
+                    {t("studentInvitations.trackStep")}
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 900 }}>
                     {t("studentInvitations.sentAt")}
                   </TableCell>
                   <TableCell sx={{ fontWeight: 900, width: 160 }}>
@@ -240,6 +249,22 @@ export default function StudentInvitations() {
                           {inv.sender?.email || ""}
                         </Typography>
                       </Stack>
+                    </TableCell>
+
+                    <TableCell>
+                      {inv.track_stage?.display_label ? (
+                        <Chip
+                          size="small"
+                          label={inv.track_stage.display_label}
+                          color="secondary"
+                          variant="outlined"
+                          sx={{ fontWeight: 800 }}
+                        />
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          —
+                        </Typography>
+                      )}
                     </TableCell>
 
                     <TableCell>

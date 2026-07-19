@@ -1,0 +1,38 @@
+@startuml 12-dashboard
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam actorStyle awesome
+skinparam defaultFontName Arial
+skinparam usecase {
+  BackgroundColor #EEF4FF
+  BorderColor #1D4ED8
+  FontSize 13
+}
+skinparam actor {
+  FontSize 13
+  FontStyle bold
+}
+
+title UPPMS — Dashboard
+
+actor Student
+actor Supervisor
+actor "University Admin" as Admin
+actor "Super Admin" as SuperAdmin
+
+rectangle "UPPMS" {
+  usecase "UC-61 Dashboard Summary" as UC61
+  usecase "UC-62 Badge Counts" as UC62
+}
+
+Student --> UC61
+Student --> UC62
+Supervisor --> UC61
+Supervisor --> UC62
+Admin --> UC61
+Admin --> UC62
+SuperAdmin --> UC61
+SuperAdmin --> UC62
+
+@enduml

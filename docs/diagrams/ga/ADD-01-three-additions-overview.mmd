@@ -1,0 +1,21 @@
+flowchart LR
+  subgraph A1["Addition 1 — Penalty + Lexicographic Rank"]
+    F[FitnessCalculator] --> P["soft - 5000 × hardViolations"]
+    C[Chromosome.compare] --> R["fewer hard first, then higher score"]
+  end
+
+  subgraph A2["Addition 2 — Smart Initialization"]
+    I[PopulationManager.initialize] --> G["~20% greedy"]
+    I --> V["~30% light variants"]
+    I --> X["~50% random"]
+  end
+
+  subgraph A3["Addition 3 — Repair Operator"]
+    O[EvolutionaryOperators] --> Rep["repair rooms + faculty"]
+    Rep --> Loop["after crossover & mutation"]
+  end
+
+  A2 --> Evol[GA main loop]
+  A3 --> Evol
+  Evol --> A1
+  A1 --> Top["Top 3 distinct candidates"]

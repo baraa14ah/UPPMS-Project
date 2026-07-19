@@ -6,22 +6,23 @@ import {
   Stack,
   Button,
   Chip,
-  Divider,
   TextField,
-  CircularProgress,
   Avatar,
+  Grid,
+  LinearProgress,
+  CircularProgress,
   alpha,
 } from "@mui/material";
 import toast from "react-hot-toast";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
-import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
+import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
+import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { textEllipsisSx } from "../../styles/textEllipsis";
-import ProjectSectionShell from "../../components/ProjectSectionShell";
 import { dashboardCardSx } from "../../styles/dashboardUi";
 
 /** Label-value row for project metadata display. */
@@ -30,12 +31,12 @@ function MetaRow({ label, children }) {
     <Stack
       direction={{ xs: "column", sm: "row" }}
       spacing={{ xs: 0.5, sm: 2 }}
-      sx={{ py: 1.25, borderBottom: "1px solid", borderColor: "divider" }}
+      sx={{ py: 1.35, borderBottom: "1px solid", borderColor: "divider" }}
     >
       <Typography
         variant="body2"
         color="text.secondary"
-        sx={{ fontWeight: 800, minWidth: { sm: 140 }, flexShrink: 0 }}
+        sx={{ fontWeight: 800, minWidth: { sm: 150 }, flexShrink: 0 }}
       >
         {label}
       </Typography>
@@ -44,7 +45,132 @@ function MetaRow({ label, children }) {
   );
 }
 
-/** Project overview card with members, settings, and progress summary. */
+/** Compact progress ring on the side — click opens tasks tab. */
+function CompactProgressAside({ progress, onOpenTasks, t }) {
+  const total = Math.max(0, Number(progress?.total) || 0);
+  const completed = Math.max(0, Number(progress?.completed) || 0);
+  const pending = Math.max(0, total - completed);
+  const progressValue = Math.max(0, Math.min(100, Number(progress?.percent) || 0));
+  const clickable = Boolean(onOpenTasks);
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        ...dashboardCardSx,
+        p: { xs: 1.75, md: 2 },
+        mb: 0,
+      }}
+    >
+      <Stack
+        direction="row"
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+      >
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            flexWrap="wrap"
+            useFlexGap
+            sx={{ mb: 1 }}
+          >
+            <Chip
+              size="small"
+              label={`${t("projectDetails.columnCompleted")}: ${completed}`}
+              sx={{ fontWeight: 800, bgcolor: alpha("#10B981", 0.12), color: "#059669" }}
+            />
+            <Chip
+              size="small"
+              label={`${t("projectDetails.chartTasks")}: ${total}`}
+              sx={{ fontWeight: 800, bgcolor: alpha("#8B5CF6", 0.12), color: "#7C3AED" }}
+            />
+            <Chip
+              size="small"
+              label={`${t("projectDetails.columnPending")}: ${pending}`}
+              sx={{ fontWeight: 800, bgcolor: alpha("#F59E0B", 0.12), color: "#D97706" }}
+            />
+          </Stack>
+          <LinearProgress
+            variant="determinate"
+            value={progressValue}
+            sx={{
+              height: 8,
+              borderRadius: 99,
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+              "& .MuiLinearProgress-bar": { borderRadius: 99 },
+            }}
+          />
+          {clickable && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontWeight: 700, mt: 0.75, display: "block" }}
+            >
+              {t("projectDetails.progressOpenTasks")}
+            </Typography>
+          )}
+        </Box>
+
+        <Box
+          onClick={clickable ? onOpenTasks : undefined}
+          onKeyDown={
+            clickable
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpenTasks();
+                  }
+                }
+              : undefined
+          }
+          role={clickable ? "button" : undefined}
+          tabIndex={clickable ? 0 : undefined}
+          sx={{
+            position: "relative",
+            display: "inline-flex",
+            flexShrink: 0,
+            cursor: clickable ? "pointer" : "default",
+          }}
+        >
+          <CircularProgress
+            variant="determinate"
+            value={100}
+            size={64}
+            thickness={4}
+            sx={{ color: (theme) => alpha(theme.palette.primary.main, 0.12) }}
+          />
+          <CircularProgress
+            variant="determinate"
+            value={progressValue}
+            size={64}
+            thickness={4}
+            sx={{
+              position: "absolute",
+              left: 0,
+              color: "primary.main",
+            }}
+          />
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 900, fontSize: "0.8rem" }}>
+              {progressValue}%
+            </Typography>
+          </Box>
+        </Box>
+      </Stack>
+    </Paper>
+  );
+}
+
+/** Spacious project overview for the details page. */
 export default function ProjectInfoCard({
   project,
   setProject,
@@ -52,6 +178,8 @@ export default function ProjectInfoCard({
   canEditProject,
   canDeleteProject,
   handleDeleteProject,
+  onOpenTasks,
+  compact = false,
 }) {
   const { authHeaders, apiFetch, API_BASE_URL } = useAuth();
   const { t } = useLanguage();
@@ -82,7 +210,6 @@ export default function ProjectInfoCard({
     : membersWithoutOwner;
   const membersCount = displayMembers.length;
 
-  /** Saves project title, description, and GitHub URL edits. */
   const handleUpdateProject = async () => {
     if (!project?.id) return;
     if (!editTitle.trim() || !editDesc.trim())
@@ -116,111 +243,140 @@ export default function ProjectInfoCard({
     }
   };
 
-  const progressValue = Math.max(0, Math.min(100, Number(progress?.percent) || 0));
-
   return (
-    <Stack direction={{ xs: "column", lg: "row" }} spacing={2.5} sx={{ mt: 0 }}>
-      <Box sx={{ flex: 1.4, minWidth: 0 }}>
-        <ProjectSectionShell
-          icon={InfoOutlinedIcon}
-          title={t("projectDetails.projectInfo")}
-          subtitle={t("projectDetails.projectInfoSubtitle")}
-          accent="#2563EB"
-        >
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2,
-              mb: 2.5,
-              borderRadius: 2.5,
-              bgcolor: (theme) =>
-                theme.palette.mode === "dark"
-                  ? "rgba(255,255,255,0.03)"
-                  : alpha("#2563EB", 0.04),
-              border: "1px solid",
-              borderColor: "divider",
-            }}
-          >
-            <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.75 }}>
-              {project.description || t("projectDetails.noProjectDescription")}
-            </Typography>
-          </Paper>
+    <Stack spacing={compact ? 1.75 : 3} sx={{ width: "100%" }}>
+      <CompactProgressAside progress={progress} onOpenTasks={onOpenTasks} t={t} />
 
-          <MetaRow label={t("projectDetails.projectOwner")}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Avatar
+      <Grid container spacing={compact ? 1.75 : 3} alignItems="stretch">
+        <Grid size={{ xs: 12, lg: 7 }}>
+          <Paper elevation={0} sx={{ ...dashboardCardSx, p: { xs: compact ? 1.75 : 2.5, md: compact ? 2 : 3 }, height: "100%" }}>
+            <Typography variant={compact ? "subtitle1" : "h6"} sx={{ fontWeight: 900, mb: compact ? 1.25 : 2 }}>
+              {t("projectDetails.projectInfo")}
+            </Typography>
+
+            <Box
+              sx={{
+                p: compact ? 1.5 : 2,
+                mb: compact ? 1.5 : 2.5,
+                borderRadius: 2.5,
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.03)"
+                    : alpha("#2563EB", 0.04),
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Typography
+                variant="body1"
                 sx={{
-                  width: 36,
-                  height: 36,
-                  bgcolor: "primary.main",
-                  fontWeight: 900,
-                  fontSize: "0.95rem",
+                  fontWeight: 500,
+                  lineHeight: 1.75,
+                  fontSize: compact ? "0.9rem" : undefined,
                 }}
               >
-                {project.user?.name?.charAt(0)?.toUpperCase() || "?"}
-              </Avatar>
-              <Box>
-                <Typography sx={{ fontWeight: 800 }}>{project.user?.name || "—"}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {project.user?.email || "—"}
-                </Typography>
-              </Box>
-            </Stack>
-          </MetaRow>
+                {project.description || t("projectDetails.noProjectDescription")}
+              </Typography>
+            </Box>
 
-          <MetaRow label="GitHub">
-            {project.github_repo_url ? (
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip
-                  component="a"
-                  href={project.github_repo_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  clickable
-                  icon={<GitHubIcon />}
-                  label={t("projectDetails.visitRepo")}
-                  size="small"
-                  sx={{
-                    fontWeight: 700,
-                    bgcolor: "#24292e",
-                    color: "white",
-                    "& .MuiChip-icon": { color: "white" },
-                    "&:hover": { bgcolor: "#000" },
-                  }}
-                />
-                <Chip
-                  label={t("projectDetails.linkedToSystem")}
-                  size="small"
-                  color="success"
-                  variant="outlined"
-                  sx={{ fontWeight: 800 }}
-                />
+            <MetaRow label={t("projectDetails.projectOwner")}>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <Avatar sx={{ width: 40, height: 40, bgcolor: "primary.main", fontWeight: 900 }}>
+                  {project.user?.name?.charAt(0)?.toUpperCase() || "?"}
+                </Avatar>
+                <Box>
+                  <Typography sx={{ fontWeight: 800 }}>{project.user?.name || "—"}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {project.user?.email || "—"}
+                  </Typography>
+                </Box>
               </Stack>
-            ) : (
-              <Chip
-                label={t("projectDetails.githubNotLinked")}
-                size="small"
-                color="warning"
-                variant="outlined"
-                sx={{ fontWeight: 700 }}
-              />
-            )}
-          </MetaRow>
+            </MetaRow>
 
-          <Box sx={{ pt: 1 }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-              <GroupsRoundedIcon fontSize="small" color="action" />
-              <Typography sx={{ fontWeight: 900 }}>
+            <MetaRow label={t("projectDetails.trackStep")}>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <TimelineRoundedIcon sx={{ fontSize: 18, color: "secondary.main" }} />
+                {project.track_stage?.phase_name || project.track_stage?.display_label ? (
+                  <Chip
+                    size="small"
+                    label={
+                      project.track_stage.phase_name || project.track_stage.display_label
+                    }
+                    color="secondary"
+                    sx={{ fontWeight: 800 }}
+                  />
+                ) : (
+                  <Typography sx={{ fontWeight: 700, color: "text.secondary" }}>
+                    {t("projects.noTrackStep")}
+                  </Typography>
+                )}
+              </Stack>
+            </MetaRow>
+
+            <MetaRow label={t("projects.supervisor")}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <PersonRoundedIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+                <Typography sx={{ fontWeight: 700 }}>
+                  {project.supervisor?.name || t("projects.noSupervisor")}
+                </Typography>
+              </Stack>
+            </MetaRow>
+
+            <MetaRow label="GitHub">
+              {project.github_repo_url ? (
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Chip
+                    component="a"
+                    href={project.github_repo_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    clickable
+                    icon={<GitHubIcon />}
+                    label={t("projectDetails.visitRepo")}
+                    sx={{
+                      fontWeight: 700,
+                      bgcolor: "#24292e",
+                      color: "white",
+                      "& .MuiChip-icon": { color: "white" },
+                    }}
+                  />
+                  <Chip
+                    label={t("projectDetails.linkedToSystem")}
+                    size="small"
+                    color="success"
+                    variant="outlined"
+                    sx={{ fontWeight: 800 }}
+                  />
+                </Stack>
+              ) : (
+                <Chip
+                  label={t("projectDetails.githubNotLinked")}
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                  sx={{ fontWeight: 700 }}
+                />
+              )}
+            </MetaRow>
+          </Paper>
+        </Grid>
+
+        <Grid size={{ xs: 12, lg: 5 }}>
+          <Paper elevation={0} sx={{ ...dashboardCardSx, p: { xs: compact ? 1.75 : 2.5, md: compact ? 2 : 3 }, height: "100%" }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: compact ? 1.25 : 2 }}>
+              <GroupsRoundedIcon color="primary" />
+              <Typography variant={compact ? "subtitle1" : "h6"} sx={{ fontWeight: 900 }}>
                 {t("projectDetails.projectMembers")}
               </Typography>
-              <Chip size="small" label={membersCount} sx={{ fontWeight: 800, height: 22 }} />
+              <Chip size="small" label={membersCount} sx={{ fontWeight: 800 }} />
             </Stack>
+
             {membersCount === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 {t("projectDetails.noMembers")}
               </Typography>
             ) : (
-              <Stack spacing={1}>
+              <Stack spacing={1.25}>
                 {displayMembers.map((m) => {
                   const mid = m.id ?? m.user_id;
                   const isOwner = owner && mid === owner.id;
@@ -231,7 +387,7 @@ export default function ProjectInfoCard({
                       spacing={1.5}
                       alignItems="center"
                       sx={{
-                        p: 1.25,
+                        p: 1.5,
                         borderRadius: 2,
                         border: "1px solid",
                         borderColor: isOwner ? "primary.main" : "divider",
@@ -242,237 +398,119 @@ export default function ProjectInfoCard({
                     >
                       <Avatar
                         sx={{
-                          width: 32,
-                          height: 32,
-                          fontSize: "0.85rem",
+                          width: 38,
+                          height: 38,
                           fontWeight: 800,
                           bgcolor: isOwner ? "primary.main" : "grey.500",
                         }}
                       >
                         {m.name?.charAt(0)?.toUpperCase() || "?"}
                       </Avatar>
-                      <Box sx={{ minWidth: 0 }}>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
                         <Typography sx={{ fontWeight: 800, ...textEllipsisSx }}>
                           {m.name}
                           {isOwner ? t("projectDetails.ownerBadge") : ""}
                         </Typography>
                         {m.email && (
-                          <Typography variant="caption" color="text.secondary" sx={textEllipsisSx}>
+                          <Typography variant="body2" color="text.secondary" sx={textEllipsisSx}>
                             {m.email}
                           </Typography>
                         )}
                       </Box>
+                      {isOwner && (
+                        <Chip
+                          size="small"
+                          label={t("projects.owner")}
+                          color="primary"
+                          sx={{ fontWeight: 800 }}
+                        />
+                      )}
                     </Stack>
                   );
                 })}
               </Stack>
             )}
-          </Box>
+          </Paper>
+        </Grid>
+      </Grid>
 
-          {canEditProject && (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                mt: 2.5,
-                borderRadius: 2.5,
-                border: "1px solid",
-                borderColor: "divider",
-                bgcolor: "background.default",
-              }}
-            >
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                justifyContent="space-between"
-                alignItems={{ xs: "flex-start", sm: "center" }}
-                spacing={1.5}
-              >
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <SettingsRoundedIcon fontSize="small" color="action" />
-                  <Typography sx={{ fontWeight: 900 }}>
-                    {t("projectDetails.projectSettings")}
-                  </Typography>
-                </Stack>
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => {
-                      setEditTitle(project?.title || "");
-                      setEditDesc(project?.description || "");
-                      setEditGithub(project?.github_repo_url || "");
-                      setEditOpen((v) => !v);
-                    }}
-                    sx={{ borderRadius: 2, fontWeight: 800 }}
-                  >
-                    {editOpen ? t("projectDetails.close") : t("common.edit")}
-                  </Button>
-                  {canDeleteProject && (
-                    <Button
-                      color="error"
-                      variant="contained"
-                      size="small"
-                      onClick={handleDeleteProject}
-                      sx={{ borderRadius: 2, fontWeight: 800 }}
-                    >
-                      {t("projectDetails.deleteProject")}
-                    </Button>
-                  )}
-                </Stack>
-              </Stack>
-
-              {editOpen && (
-                <Stack spacing={2} sx={{ mt: 2 }}>
-                  <TextField
-                    label={t("projectDetails.projectName")}
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    fullWidth
-                  />
-                  <TextField
-                    label={t("projectDetails.projectDescription")}
-                    value={editDesc}
-                    onChange={(e) => setEditDesc(e.target.value)}
-                    multiline
-                    minRows={3}
-                    fullWidth
-                  />
-                  <TextField
-                    label={t("projectDetails.githubLink")}
-                    value={editGithub}
-                    onChange={(e) => setEditGithub(e.target.value)}
-                    placeholder="https://github.com/username/repository"
-                    fullWidth
-                  />
-                  <Button
-                    variant="contained"
-                    onClick={handleUpdateProject}
-                    disabled={savingProject}
-                    sx={{ borderRadius: 2, fontWeight: 900, alignSelf: "flex-start", px: 3 }}
-                  >
-                    {savingProject ? t("projectDetails.saving") : t("projectDetails.saveChanges")}
-                  </Button>
-                </Stack>
-              )}
-            </Paper>
-          )}
-        </ProjectSectionShell>
-      </Box>
-
-      <Paper
-        elevation={0}
-        sx={{
-          ...dashboardCardSx,
-          p: 2.5,
-          width: { xs: "100%", lg: 320 },
-          flexShrink: 0,
-          alignSelf: "flex-start",
-        }}
-      >
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-          <TrendingUpRoundedIcon color="primary" />
-          <Typography variant="h6" sx={{ fontWeight: 900 }}>
-            {t("projectDetails.progressTitle")}
-          </Typography>
-        </Stack>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-          {t("projectDetails.progressSubtitle")}
-        </Typography>
-
-        {progress.total === 0 ? (
-          <Box
-            sx={{
-              py: 4,
-              textAlign: "center",
-              borderRadius: 2,
-              border: "1px dashed",
-              borderColor: "divider",
-            }}
+      {canEditProject && (
+        <Paper elevation={0} sx={{ ...dashboardCardSx, p: { xs: compact ? 1.75 : 2.5, md: compact ? 2 : 3 } }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            spacing={1.5}
+            sx={{ mb: editOpen ? (compact ? 1.5 : 2.5) : 0 }}
           >
-            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-              {t("projectDetails.noTasksForProgress")}
-            </Typography>
-          </Box>
-        ) : (
-          <Stack alignItems="center" spacing={2}>
-            <Box sx={{ position: "relative", display: "inline-flex" }}>
-              <CircularProgress
-                variant="determinate"
-                value={100}
-                size={140}
-                thickness={3}
-                sx={{ color: (theme) => alpha(theme.palette.primary.main, 0.12) }}
-              />
-              <CircularProgress
-                variant="determinate"
-                value={progressValue}
-                size={140}
-                thickness={3}
-                sx={{
-                  position: "absolute",
-                  left: 0,
-                  color: "primary.main",
-                  "& .MuiCircularProgress-circle": { strokeLinecap: "round" },
+            <Stack direction="row" spacing={1} alignItems="center">
+              <SettingsRoundedIcon color="action" />
+              <Typography variant={compact ? "subtitle1" : "h6"} sx={{ fontWeight: 900 }}>
+                {t("projectDetails.projectSettings")}
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setEditTitle(project?.title || "");
+                  setEditDesc(project?.description || "");
+                  setEditGithub(project?.github_repo_url || "");
+                  setEditOpen((v) => !v);
                 }}
-              />
-              <Box
-                sx={{
-                  top: 0,
-                  left: 0,
-                  bottom: 0,
-                  right: 0,
-                  position: "absolute",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexDirection: "column",
-                }}
+                sx={{ borderRadius: 2, fontWeight: 800 }}
               >
-                <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1 }}>
-                  {progressValue}%
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                  {t("projectDetails.percentComplete", { percent: progressValue })}
-                </Typography>
-              </Box>
-            </Box>
-            <Stack direction="row" spacing={2} sx={{ width: "100%" }}>
-              <Box
-                sx={{
-                  flex: 1,
-                  p: 1.5,
-                  borderRadius: 2,
-                  textAlign: "center",
-                  bgcolor: (theme) => alpha(theme.palette.success.main, 0.08),
-                }}
-              >
-                <Typography variant="h6" sx={{ fontWeight: 900, color: "success.main" }}>
-                  {progress.completed}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                  {t("projectDetails.columnCompleted")}
-                </Typography>
-              </Box>
-              <Box
-                sx={{
-                  flex: 1,
-                  p: 1.5,
-                  borderRadius: 2,
-                  textAlign: "center",
-                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
-                }}
-              >
-                <Typography variant="h6" sx={{ fontWeight: 900, color: "primary.main" }}>
-                  {progress.total}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                  {t("projectDetails.chartTasks")}
-                </Typography>
-              </Box>
+                {editOpen ? t("projectDetails.close") : t("common.edit")}
+              </Button>
+              {canDeleteProject && (
+                <Button
+                  color="error"
+                  variant="contained"
+                  onClick={handleDeleteProject}
+                  sx={{ borderRadius: 2, fontWeight: 800 }}
+                >
+                  {t("projectDetails.deleteProject")}
+                </Button>
+              )}
             </Stack>
           </Stack>
-        )}
-      </Paper>
+
+          {editOpen && (
+            <Stack spacing={2}>
+              <TextField
+                label={t("projectDetails.projectName")}
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                fullWidth
+              />
+              <TextField
+                label={t("projectDetails.projectDescription")}
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                multiline
+                minRows={4}
+                fullWidth
+              />
+              <TextField
+                label={t("projectDetails.githubLink")}
+                value={editGithub}
+                onChange={(e) => setEditGithub(e.target.value)}
+                placeholder="https://github.com/username/repository"
+                fullWidth
+              />
+              <Button
+                variant="contained"
+                onClick={handleUpdateProject}
+                disabled={savingProject}
+                startIcon={<TaskAltRoundedIcon />}
+                sx={{ borderRadius: 2, fontWeight: 900, alignSelf: "flex-start", px: 3 }}
+              >
+                {savingProject ? t("projectDetails.saving") : t("projectDetails.saveChanges")}
+              </Button>
+            </Stack>
+          )}
+        </Paper>
+      )}
     </Stack>
   );
 }

@@ -1,11 +1,10 @@
 import React, { lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { Box, CircularProgress, Typography } from "@mui/material";
 import DashboardLayout from "./layouts/DashboardLayout";
 import { useAuth } from "./context/AuthContext";
-import { useLanguage } from "./context/LanguageContext";
 import CustomThemeProvider from "./context/ThemeContext";
+import LoadingScreen from "./components/loading/LoadingScreen";
 
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -27,6 +26,14 @@ const PlatformUsers = lazy(() => import("./pages/PlatformUsers"));
 const PlatformProjects = lazy(() => import("./pages/PlatformProjects"));
 const PlatformDashboard = lazy(() => import("./pages/PlatformDashboard"));
 const ProjectIdeation = lazy(() => import("./pages/ProjectIdeation"));
+const SchedulingDashboard = lazy(() => import("./pages/SchedulingDashboard"));
+const CommitteeManagement = lazy(() => import("./pages/CommitteeManagement"));
+const XmlImportDashboard = lazy(() => import("./pages/XmlImportDashboard"));
+const MySchedule = lazy(() => import("./pages/MySchedule"));
+const ProposalSubmission = lazy(() => import("./pages/ProposalSubmission"));
+const SupervisorProposalReview = lazy(() => import("./pages/SupervisorProposalReview"));
+const TrackBuilder = lazy(() => import("./pages/TrackBuilder"));
+const StudentProgressTimeline = lazy(() => import("./pages/StudentProgressTimeline"));
 
 /** Routes admins to tenant Users and super admins to PlatformUsers. */
 function UsersPage() {
@@ -42,28 +49,6 @@ function UsersPage() {
 function ProjectsPage() {
   const { isSuperAdmin } = useAuth();
   return isSuperAdmin ? <PlatformProjects /> : <Projects />;
-}
-
-/** Full-screen spinner shown while the user profile loads. */
-function LoadingScreen() {
-  const { t } = useLanguage();
-  return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        bgcolor: "background.default",
-      }}
-    >
-      <CircularProgress />
-      <Typography sx={{ mt: 2, fontWeight: 700, color: "text.secondary" }}>
-        {t("common.loading")}
-      </Typography>
-    </Box>
-  );
 }
 
 /** Guards dashboard routes behind auth, status, and session checks. */
@@ -82,7 +67,7 @@ function ProtectedRoute({ children }) {
     return <PendingApproval />;
   }
 
-  if (!status || status !== "active") {
+  if (!status || (status !== "active" && status !== "graduated")) {
     return <Navigate to="/login" replace />;
   }
 
@@ -126,6 +111,35 @@ function InvitationRoute({ children, allowedRole }) {
   return children;
 }
 
+/** Restricts a route to university admins only. */
+function AdminRoute({ children }) {
+  const { role } = useAuth();
+  if (String(role || "").toLowerCase() !== "admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+}
+
+/** Restricts a route to supervisors and admins. */
+function FacultyScheduleRoute({ children }) {
+  const { role } = useAuth();
+  const roleName = String(role || "").toLowerCase();
+  if (!["supervisor", "admin"].includes(roleName)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+}
+
+/** Restricts proposal review to supervisors and university admins. */
+function ProposalReviewRoute({ children }) {
+  const { role } = useAuth();
+  const roleName = String(role || "").toLowerCase();
+  if (!["supervisor", "admin"].includes(roleName)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+}
+
 /** Root router: public auth pages and protected dashboard routes. */
 export default function App() {
   return (
@@ -156,14 +170,7 @@ export default function App() {
               </SuperAdminRoute>
             }
           />
-          <Route
-            path="profile"
-            element={
-              <TenantRoute>
-                <Profile />
-              </TenantRoute>
-            }
-          />
+          <Route path="profile" element={<Profile />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetails />} />
           <Route path="notifications" element={<Notifications />} />
@@ -195,6 +202,90 @@ export default function App() {
                 <StudentRoute>
                   <ProjectIdeation />
                 </StudentRoute>
+              </TenantRoute>
+            }
+          />
+          <Route
+            path="proposals"
+            element={
+              <TenantRoute>
+                <StudentRoute>
+                  <ProposalSubmission />
+                </StudentRoute>
+              </TenantRoute>
+            }
+          />
+          <Route
+            path="my-progress"
+            element={
+              <TenantRoute>
+                <StudentRoute>
+                  <StudentProgressTimeline />
+                </StudentRoute>
+              </TenantRoute>
+            }
+          />
+          <Route
+            path="proposal-review"
+            element={
+              <TenantRoute>
+                <ProposalReviewRoute>
+                  <SupervisorProposalReview />
+                </ProposalReviewRoute>
+              </TenantRoute>
+            }
+          />
+          <Route
+            path="university"
+            element={<Navigate to="/dashboard" replace />}
+          />
+          <Route
+            path="scheduling"
+            element={
+              <TenantRoute>
+                <AdminRoute>
+                  <SchedulingDashboard />
+                </AdminRoute>
+              </TenantRoute>
+            }
+          />
+          <Route
+            path="committees"
+            element={
+              <TenantRoute>
+                <AdminRoute>
+                  <CommitteeManagement />
+                </AdminRoute>
+              </TenantRoute>
+            }
+          />
+          <Route
+            path="tracks"
+            element={
+              <TenantRoute>
+                <AdminRoute>
+                  <TrackBuilder />
+                </AdminRoute>
+              </TenantRoute>
+            }
+          />
+          <Route
+            path="xml-import"
+            element={
+              <TenantRoute>
+                <AdminRoute>
+                  <XmlImportDashboard />
+                </AdminRoute>
+              </TenantRoute>
+            }
+          />
+          <Route
+            path="my-schedule"
+            element={
+              <TenantRoute>
+                <FacultyScheduleRoute>
+                  <MySchedule />
+                </FacultyScheduleRoute>
               </TenantRoute>
             }
           />

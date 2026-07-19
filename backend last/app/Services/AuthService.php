@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\Role;
 use App\Models\University;
 use App\Models\User;
+use App\Models\XmlAuthorizedUser;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -15,6 +17,7 @@ class AuthService
     /** Injects the notification service dependency. */
     public function __construct(
         protected NotificationService $notifications,
+        protected XmlImportService $xmlImportService,
     ) {}
 
     /** Registers a new student or supervisor account and returns auth credentials. */
@@ -34,37 +37,7 @@ class AuthService
 
                 $request->validate($this->registrationRules($request, $universityId, $existingUser->id));
 
-                $role = Role::where('name', $request->role)->first();
-                if (!$role) {
-                    return ['error' => ['message' => 'Role not found', 'status' => 422]];
-                }
-
-                $existingUser->update([
-                    'name'            => $request->name,
-                    'password'        => $request->password,
-                    'role_id'         => $role->id,
-                    'status'          => 'pending',
-                    'university_id'   => $universityId ?? $existingUser->university_id,
-                    'student_number'  => $request->role === 'student' ? $request->student_number : null,
-                ]);
-
-                $this->syncStudentProfile($existingUser);
-
-                if ($request->role === 'supervisor') {
-                    $existingUser->attachSupervisorUniversitiesPending($universityIds);
-                }
-
-                $existingUser->load('role');
-                $this->notifyAdminsOfRegistration($existingUser, $universityIds);
-                $token = $existingUser->createToken('auth_token')->plainTextToken;
-
-                return [
-                    'message' => 'Registered successfully (re-registration)',
-                    'token'   => $token,
-                    'user'    => $existingUser,
-                    'role'    => $existingUser->role?->name,
-                    'status'  => 201,
-                ];
+                return $this->finalizeRegistration($request, $universityId, $universityIds, $existingUser);
             }
 
             if ($existingUser->status === 'pending') {
@@ -92,33 +65,7 @@ class AuthService
             return ['error' => ['message' => 'Unauthorized role', 'status' => 403]];
         }
 
-        $user = User::create([
-            'name'           => $request->name,
-            'email'          => $request->email,
-            'password'       => $request->password,
-            'role_id'        => $role->id,
-            'university_id'  => $universityId,
-            'student_number' => $request->role === 'student' ? $request->student_number : null,
-            'status'         => 'pending',
-        ]);
-
-        $this->syncStudentProfile($user);
-
-        if ($request->role === 'supervisor') {
-            $user->attachSupervisorUniversitiesPending($universityIds);
-        }
-
-        $user->load('role');
-        $this->notifyAdminsOfRegistration($user, $universityIds);
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return [
-            'message' => 'Registered successfully',
-            'token'   => $token,
-            'user'    => $user,
-            'role'    => $user->role?->name,
-            'status'  => 201,
-        ];
+        return $this->finalizeRegistration($request, $universityId, $universityIds);
     }
 
     /** Authenticates a user and returns an access token. */
@@ -226,6 +173,157 @@ class AuthService
         }
 
         return $rules;
+    }
+
+    /** Creates or updates a user account with XML locking inside a transaction. */
+    private function finalizeRegistration(
+        Request $request,
+        int $universityId,
+        array $universityIds,
+        ?User $existingUser = null,
+    ): array {
+        return DB::transaction(function () use ($request, $universityId, $universityIds, $existingUser) {
+            $xmlResult = $this->resolveAndLockXmlRegistration($request, $universityIds);
+            if (isset($xmlResult['error'])) {
+                return $xmlResult;
+            }
+
+            $role = Role::where('name', $request->role)->first();
+            if (!$role) {
+                return ['error' => ['message' => 'Role not found', 'status' => 422]];
+            }
+
+            if ($existingUser) {
+                $existingUser->update([
+                    'name'           => $request->name,
+                    'password'       => $request->password,
+                    'role_id'        => $role->id,
+                    'status'         => $xmlResult['status'],
+                    'university_id'  => $universityId ?? $existingUser->university_id,
+                    'student_number' => $request->role === 'student' ? $request->student_number : null,
+                ]);
+                $user = $existingUser;
+            } else {
+                $user = User::create([
+                    'name'           => $request->name,
+                    'email'          => $request->email,
+                    'password'       => $request->password,
+                    'role_id'        => $role->id,
+                    'university_id'  => $universityId,
+                    'student_number' => $request->role === 'student' ? $request->student_number : null,
+                    'status'         => $xmlResult['status'],
+                ]);
+            }
+
+            foreach ($xmlResult['locked_records'] as $record) {
+                $record->claimForUser($user->id);
+            }
+
+            $this->syncStudentProfile($user);
+
+            if ($request->role === 'supervisor') {
+                $user->syncSupervisorUniversitiesMixed(
+                    $xmlResult['active_university_ids'],
+                    $xmlResult['pending_university_ids'],
+                );
+                $user->refreshAccountStatusFromMemberships();
+            }
+
+            $user->load('role');
+
+            if ($xmlResult['status'] === 'pending') {
+                $this->notifyAdminsOfRegistration($user, $universityIds);
+            }
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return [
+                'message' => $existingUser
+                    ? 'Registered successfully (re-registration)'
+                    : 'Registered successfully',
+                'token'   => $token,
+                'user'    => $user,
+                'role'    => $user->role?->name,
+                'status'  => 201,
+            ];
+        });
+    }
+
+    /**
+     * Validates and row-locks XML records for each selected university that requires XML.
+     *
+     * @return array<string, mixed>
+     */
+    private function resolveAndLockXmlRegistration(Request $request, array $universityIds): array
+    {
+        if (!in_array($request->role, ['student', 'supervisor'], true)) {
+            return [
+                'status' => 'pending',
+                'locked_records' => [],
+                'active_university_ids' => [],
+                'pending_university_ids' => $universityIds,
+            ];
+        }
+
+        $hasXmlUniversity = false;
+        $lockedRecords = [];
+        $activeUniversityIds = [];
+        $pendingUniversityIds = [];
+        $universityNumber = $request->role === 'student'
+            ? (string) $request->student_number
+            : null;
+
+        foreach ($universityIds as $uid) {
+            $uid = (int) $uid;
+            if (!$this->xmlImportService->universityHasXmlRecords($uid)) {
+                $pendingUniversityIds[] = $uid;
+                continue;
+            }
+
+            $hasXmlUniversity = true;
+            $record = XmlAuthorizedUser::lockAvailableForRegistration(
+                $uid,
+                (string) $request->email,
+                $universityNumber,
+                (string) $request->role,
+            );
+
+            if (!$record) {
+                $result = $this->xmlImportService->resolveRegistrationCredentials(
+                    (string) $request->email,
+                    $universityNumber,
+                    (string) $request->role,
+                    $uid,
+                );
+
+                return [
+                    'error' => [
+                        'message' => $result['error'] ?? XmlImportService::CREDENTIALS_MISMATCH,
+                        'errors' => ['credentials' => [$result['error'] ?? XmlImportService::CREDENTIALS_MISMATCH]],
+                        'status' => 422,
+                    ],
+                ];
+            }
+
+            $lockedRecords[] = $record;
+            $activeUniversityIds[] = $uid;
+        }
+
+        if (!$hasXmlUniversity) {
+            return [
+                'status' => 'pending',
+                'locked_records' => [],
+                'active_university_ids' => [],
+                'pending_university_ids' => $universityIds,
+            ];
+        }
+
+        return [
+            'status' => 'active',
+            'locked_records' => $lockedRecords,
+            'active_university_ids' => $activeUniversityIds,
+            'pending_university_ids' => $pendingUniversityIds,
+        ];
     }
 
     /** Notifies university admins of a pending registration request. */

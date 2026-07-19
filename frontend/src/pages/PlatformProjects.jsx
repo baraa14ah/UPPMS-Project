@@ -297,6 +297,7 @@ export default function PlatformProjects() {
                 <TableRow>
                   <TableCell>{t("platformProjects.colTitle")}</TableCell>
                   <TableCell>{t("platformProjects.colUniversity")}</TableCell>
+                  <TableCell>{t("platformProjects.colPhase")}</TableCell>
                   <TableCell>{t("platformProjects.colOwner")}</TableCell>
                   <TableCell>{t("platformProjects.colSupervisor")}</TableCell>
                   <TableCell>{t("platformProjects.colStatus")}</TableCell>
@@ -316,6 +317,13 @@ export default function PlatformProjects() {
                       </Button>
                     </TableCell>
                     <TableCell>{p.university?.name || "—"}</TableCell>
+                    <TableCell>
+                      {p.phase_name ? (
+                        <Chip size="small" label={p.phase_name} color="secondary" variant="outlined" sx={{ fontWeight: 800 }} />
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell>{p.user?.name || "—"}</TableCell>
                     <TableCell>{p.supervisor?.name || "—"}</TableCell>
                     <TableCell>{renderStatusChip(p.status)}</TableCell>

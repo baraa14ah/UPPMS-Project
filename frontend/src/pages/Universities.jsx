@@ -219,13 +219,25 @@ export default function Universities() {
                     {t("universitiesPage.colName")}
                   </TableCell>
                   <TableCell sx={{ fontWeight: 800 }}>
-                    {t("universitiesPage.colSlug")}
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>
                     {t("universitiesPage.colStatus")}
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>
-                    {t("universitiesPage.colCreatedAt")}
+                  <TableCell align="center" sx={{ fontWeight: 800 }}>
+                    {t("universitiesPage.colUsers")}
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 800 }}>
+                    {t("universitiesPage.colProjects")}
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 800 }}>
+                    {t("universitiesPage.colTracks")}
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 800 }}>
+                    {t("universitiesPage.colSchedules")}
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 800 }}>
+                    {t("universitiesPage.colCommittees")}
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 800 }}>
+                    {t("universitiesPage.colRooms")}
                   </TableCell>
                   <TableCell sx={{ fontWeight: 800, textAlign: "left" }}>
                     {t("universitiesPage.colActions")}
@@ -235,7 +247,7 @@ export default function Universities() {
               <TableBody>
                 {universities.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
                       <Typography color="text.secondary">
                         {t("universitiesPage.empty")}
                       </Typography>
@@ -245,9 +257,11 @@ export default function Universities() {
                   universities.map((uni, idx) => (
                     <TableRow key={uni.id} hover>
                       <TableCell>{idx + 1}</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>{uni.name}</TableCell>
-                      <TableCell sx={{ color: "text.secondary" }}>
-                        {uni.slug || "—"}
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 800 }}>{uni.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {uni.slug || "—"}
+                        </Typography>
                       </TableCell>
                       <TableCell>
                         <Chip
@@ -260,12 +274,23 @@ export default function Universities() {
                           color={uni.is_active ? "success" : "default"}
                         />
                       </TableCell>
-                      <TableCell sx={{ color: "text.secondary" }}>
-                        {uni.created_at
-                          ? new Date(uni.created_at).toLocaleDateString(
-                              dateLocale,
-                            )
-                          : "—"}
+                      <TableCell align="center" sx={{ fontWeight: 800 }}>
+                        {uni.users_total ?? 0}
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800 }}>
+                        {uni.projects ?? 0}
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800 }}>
+                        {uni.active_tracks ?? uni.tracks ?? 0}
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800 }}>
+                        {uni.active_schedules ?? 0}
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800 }}>
+                        {uni.committees ?? 0}
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800 }}>
+                        {uni.defense_rooms ?? 0}
                       </TableCell>
                       <TableCell sx={{ textAlign: "left" }}>
                         <Tooltip title={t("common.edit")}>

@@ -1,0 +1,33 @@
+@startuml 11-platform-admin
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam actorStyle awesome
+skinparam defaultFontName Arial
+skinparam usecase {
+  BackgroundColor #EEF4FF
+  BorderColor #1D4ED8
+  FontSize 13
+}
+skinparam actor {
+  FontSize 13
+  FontStyle bold
+}
+
+title UPPMS — Platform Administration
+
+actor "Super Admin" as SuperAdmin
+
+rectangle "UPPMS" {
+  usecase "UC-57 Manage Universities" as UC57
+  usecase "UC-58 Manage Platform Users" as UC58
+  usecase "UC-59 Manage Platform Projects" as UC59
+  usecase "UC-60 Platform Statistics" as UC60
+}
+
+SuperAdmin --> UC57
+SuperAdmin --> UC58
+SuperAdmin --> UC59
+SuperAdmin --> UC60
+
+@enduml

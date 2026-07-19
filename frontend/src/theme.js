@@ -5,7 +5,13 @@ const SLATE_MID = "#334155";
 const BLUE = "#3B82F6";
 const TEAL = "#14B8A6";
 
-export const brandColors = { navy: NAVY, blue: BLUE, teal: TEAL, bg: "#F7F8FA", border: "#E2E8F0" };
+export const brandColors = {
+  navy: NAVY,
+  blue: BLUE,
+  teal: TEAL,
+  bg: "#F7F8FA",
+  border: "#E2E8F0",
+};
 
 /** Builds the MUI theme palette, typography, and component overrides. */
 export const getDesignTokens = (mode, direction = "rtl", lang = "ar") => ({
@@ -32,6 +38,8 @@ export const getDesignTokens = (mode, direction = "rtl", lang = "ar") => ({
   },
   shape: { borderRadius: 12 },
   typography: {
+    htmlFontSize: 16,
+    fontSize: 14,
     fontFamily:
       lang === "en"
         ? [
@@ -54,21 +62,35 @@ export const getDesignTokens = (mode, direction = "rtl", lang = "ar") => ({
             "Arial",
             "sans-serif",
           ].join(","),
+    h1: { fontWeight: 800, fontSize: "1.75rem", lineHeight: 1.25 },
+    h2: { fontWeight: 800, fontSize: "1.5rem", lineHeight: 1.28 },
     h3: {
       fontWeight: 800,
-      letterSpacing: lang === "ar" ? 0 : -0.4,
+      fontSize: "1.3rem",
+      letterSpacing: lang === "ar" ? 0 : -0.25,
       lineHeight: 1.3,
     },
     h4: {
       fontWeight: 800,
-      letterSpacing: lang === "ar" ? 0 : -0.25,
-      lineHeight: 1.3,
+      fontSize: "1.15rem",
+      letterSpacing: lang === "ar" ? 0 : -0.2,
+      lineHeight: 1.32,
     },
-    h5: { fontWeight: 700, letterSpacing: lang === "ar" ? 0 : -0.15 },
-    body1: { lineHeight: 1.65, fontWeight: 400 },
-    body2: { lineHeight: 1.6, fontWeight: 400 },
+    h5: {
+      fontWeight: 700,
+      fontSize: "1.05rem",
+      letterSpacing: lang === "ar" ? 0 : -0.1,
+      lineHeight: 1.35,
+    },
+    h6: { fontWeight: 700, fontSize: "0.95rem", lineHeight: 1.4 },
+    subtitle1: { fontSize: "0.95rem", fontWeight: 600 },
+    subtitle2: { fontSize: "0.875rem", fontWeight: 600 },
+    body1: { fontSize: "0.9375rem", lineHeight: 1.6, fontWeight: 400 },
+    body2: { fontSize: "0.875rem", lineHeight: 1.55, fontWeight: 400 },
+    caption: { fontSize: "0.8125rem", lineHeight: 1.45 },
     button: {
       fontWeight: 700,
+      fontSize: "0.875rem",
       textTransform: "none",
       lineHeight: 1.45,
     },
@@ -76,8 +98,11 @@ export const getDesignTokens = (mode, direction = "rtl", lang = "ar") => ({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        html: { fontSize: 16 },
         body: {
           backgroundColor: mode === "light" ? "#F7F8FA" : NAVY_LIGHT,
+          fontSize: "0.9375rem",
+          margin: 0,
         },
       },
     },
@@ -96,7 +121,8 @@ export const getDesignTokens = (mode, direction = "rtl", lang = "ar") => ({
       styleOverrides: {
         root: { borderRadius: 10 },
         containedPrimary: {
-          boxShadow: mode === "light" ? "0 8px 24px rgba(11,18,32,0.2)" : "none",
+          boxShadow:
+            mode === "light" ? "0 8px 24px rgba(11,18,32,0.2)" : "none",
         },
         containedSuccess: {
           color: "#FFFFFF !important",
@@ -117,6 +143,9 @@ export const getDesignTokens = (mode, direction = "rtl", lang = "ar") => ({
     },
     MuiDrawer: {
       styleOverrides: {
+        root: {
+          flexShrink: 0,
+        },
         paper: {
           borderInlineEnd: `1px solid ${mode === "light" ? "#E2E8F0" : SLATE_MID}`,
           ...(mode === "dark" && {
@@ -136,9 +165,15 @@ export const getDesignTokens = (mode, direction = "rtl", lang = "ar") => ({
             },
           }),
           "&.Mui-selected": {
-            backgroundColor: mode === "light" ? "rgba(59, 130, 246, 0.12)" : "rgba(59, 130, 246, 0.25)",
+            backgroundColor:
+              mode === "light"
+                ? "rgba(59, 130, 246, 0.12)"
+                : "rgba(59, 130, 246, 0.25)",
             "&:hover": {
-              backgroundColor: mode === "light" ? "rgba(59, 130, 246, 0.16)" : "rgba(59, 130, 246, 0.3)",
+              backgroundColor:
+                mode === "light"
+                  ? "rgba(59, 130, 246, 0.16)"
+                  : "rgba(59, 130, 246, 0.3)",
             },
           },
         },
@@ -205,7 +240,7 @@ export const getDesignTokens = (mode, direction = "rtl", lang = "ar") => ({
           fontWeight: 700,
         },
         filled: {
-          ...(mode === "dark" && { 
+          ...(mode === "dark" && {
             color: "#F1F5F9",
             "& .MuiChip-icon": { color: "#F1F5F9" },
           }),
@@ -253,7 +288,9 @@ export const getDesignTokens = (mode, direction = "rtl", lang = "ar") => ({
         root: {
           ...(mode === "dark" && {
             "& .MuiOutlinedInput-notchedOutline": { borderColor: "#475569" },
-            "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#64748B" },
+            "&:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#64748B",
+            },
           }),
         },
         input: {
@@ -284,7 +321,7 @@ export const getDesignTokens = (mode, direction = "rtl", lang = "ar") => ({
     MuiLinearProgress: {
       styleOverrides: {
         root: {
-          ...(mode === "dark" && { 
+          ...(mode === "dark" && {
             backgroundColor: SLATE_MID,
           }),
         },
@@ -413,12 +450,22 @@ export const getDesignTokens = (mode, direction = "rtl", lang = "ar") => ({
       },
     },
     MuiSkeleton: {
+      defaultProps: {
+        animation: "wave",
+      },
       styleOverrides: {
-        root: {
-          ...(mode === "dark" && {
-            backgroundColor: "rgba(255,255,255,0.1)",
-          }),
-        },
+        root: ({ theme }) => ({
+          bgcolor:
+            theme.palette.mode === "dark"
+              ? "rgba(255,255,255,0.08)"
+              : "rgba(15,23,42,0.06)",
+          "&::after": {
+            background:
+              theme.palette.mode === "dark"
+                ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)"
+                : "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)",
+          },
+        }),
       },
     },
   },

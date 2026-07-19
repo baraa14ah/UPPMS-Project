@@ -1,0 +1,51 @@
+@startuml 04-tasks-comments
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam actorStyle awesome
+skinparam defaultFontName Arial
+skinparam usecase {
+  BackgroundColor #EEF4FF
+  BorderColor #1D4ED8
+  FontSize 13
+}
+skinparam actor {
+  FontSize 13
+  FontStyle bold
+}
+
+title UPPMS — Tasks & Comments
+
+actor Student
+actor Supervisor
+actor "University Admin" as Admin
+
+rectangle "UPPMS" {
+  usecase "UC-27 Create Task" as UC27
+  usecase "UC-28 Update Task" as UC28
+  usecase "UC-29 Delete Task" as UC29
+  usecase "UC-30 List Tasks" as UC30
+  usecase "UC-31 Post Comment" as UC31
+  usecase "UC-32 Edit / Delete Comment" as UC32
+}
+
+Student --> UC27
+Student --> UC28
+Student --> UC29
+Student --> UC30
+Student --> UC31
+Student --> UC32
+Supervisor --> UC27
+Supervisor --> UC28
+Supervisor --> UC29
+Supervisor --> UC30
+Supervisor --> UC31
+Supervisor --> UC32
+Admin --> UC27
+Admin --> UC28
+Admin --> UC29
+Admin --> UC30
+Admin --> UC31
+Admin --> UC32
+
+@enduml

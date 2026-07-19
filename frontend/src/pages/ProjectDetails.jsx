@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   useNavigate,
   useParams,
@@ -11,7 +11,10 @@ import VersionsTab from "./ProjectDetails/VersionsTab";
 import TasksTab from "./ProjectDetails/TasksTab";
 import InvitationsSection from "./ProjectDetails/InvitationsSection";
 import ProjectInfoCard from "./ProjectDetails/ProjectInfoCard";
-import ProjectCharts from "./ProjectDetails/ProjectCharts";
+import DefenseSessionCard from "./ProjectDetails/DefenseSessionCard";
+import DefenseActionBar from "./ProjectDetails/DefenseActionBar";
+import ProjectPhaseProgress from "../components/ProjectPhaseProgress";
+import CommitteeAssignDialog from "../components/scheduling/CommitteeAssignDialog";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { textEllipsisSx } from "../styles/textEllipsis";
@@ -30,6 +33,13 @@ import {
   Alert,
   Tabs,
   Tab,
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -41,8 +51,14 @@ import FolderZipRoundedIcon from "@mui/icons-material/FolderZipRounded";
 import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import PersonAddAltRoundedIcon from "@mui/icons-material/PersonAddAltRounded";
+import GavelRoundedIcon from "@mui/icons-material/GavelRounded";
+import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import { getRoleTheme } from "../config/roleTheme";
 import { rtlSafeGradientStyle } from "../utils/rtlSafeGradient";
+import {
+  countUnreadComments,
+  markCommentsSeen,
+} from "../utils/commentSeen";
 
 /** Project detail page with tabbed overview, tasks, comments, versions, and timeline. */
 export default function ProjectDetails() {
@@ -52,13 +68,23 @@ export default function ProjectDetails() {
   const location = useLocation();
 
   const [activeTab, setActiveTab] = useState(0);
+  const [actionsMenuAnchor, setActionsMenuAnchor] = useState(null);
+  const defaultTabApplied = useRef(false);
+  const [commentsSeenTick, setCommentsSeenTick] = useState(0);
 
-  const { token, user, authHeaders, apiFetch, API_BASE_URL } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const { token, user, authHeaders, apiFetch, API_BASE_URL, refreshProfile } = useAuth();
   const currentUserId = user?.user?.id ?? user?.id;
   const currentRole = String(
     user?.role?.name ?? user?.role ?? "",
   ).toLowerCase();
   const roleTheme = getRoleTheme(currentRole);
+
+  useEffect(() => {
+    defaultTabApplied.current = false;
+  }, [id]);
 
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -71,6 +97,7 @@ export default function ProjectDetails() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [assignCommitteeOpen, setAssignCommitteeOpen] = useState(false);
 
   const [dialogConfig, setDialogConfig] = useState({
     isOpen: false,
@@ -171,8 +198,69 @@ export default function ProjectDetails() {
     currentRole === "admin" ||
     (project && currentUserId === project.user_id) ||
     (project && currentUserId === project.supervisor_id);
-  const canDeleteProject =
-    currentRole === "admin" || (project && currentUserId === project.user_id);
+  const canDeleteProject = currentRole === "admin";
+  const isStudent = currentRole === "student";
+  const isProjectOwner =
+    project && currentUserId && Number(project.user_id) === currentUserId;
+  const isProjectMember = Boolean(
+    project?.members?.some(
+      (m) =>
+        Number(m.id) === currentUserId &&
+        String(m.pivot?.status || m.status || "accepted") === "accepted",
+    ),
+  );
+  const canLeaveProject =
+    isStudent && project && (isProjectOwner || isProjectMember);
+  const isAdmin = currentRole === "admin";
+  const [defenseSession, setDefenseSession] = useState(null);
+  const [defenseResult, setDefenseResult] = useState(null);
+  const [defenseResultDialogOpen, setDefenseResultDialogOpen] = useState(false);
+  const [defenseCompleteDialogOpen, setDefenseCompleteDialogOpen] = useState(false);
+
+  const hasScheduledCommittee = useMemo(() => {
+    if (!defenseSession) return false;
+    if (defenseSession.committee_id) return true;
+
+    const committee =
+      defenseSession.display_committee || defenseSession.displayCommittee;
+    if (committee?.members?.length) return true;
+
+    const members =
+      defenseSession.committee_members || defenseSession.committeeMembers || [];
+    return members.length > 0;
+  }, [defenseSession]);
+
+  const canRecordDefenseResult = useMemo(() => {
+    if (!defenseSession || !currentUserId) return false;
+    if (isAdmin) return true;
+
+    const committee =
+      defenseSession.display_committee ||
+      defenseSession.displayCommittee;
+    if (committee?.members?.length) {
+      return committee.members.some(
+        (member) => member.id === currentUserId && member.role === "chair",
+      );
+    }
+
+    const legacyMembers =
+      defenseSession.committee_members ||
+      defenseSession.committeeMembers ||
+      [];
+    return legacyMembers.some(
+      (member) => (member.id ?? member.user_id) === currentUserId,
+    );
+  }, [defenseSession, currentUserId, isAdmin]);
+
+  const isDefenseChair = useMemo(() => {
+    if (!defenseSession || !currentUserId || isAdmin) return false;
+    const committee =
+      defenseSession.display_committee ||
+      defenseSession.displayCommittee;
+    return committee?.members?.some(
+      (member) => member.id === currentUserId && member.role === "chair",
+    );
+  }, [defenseSession, currentUserId, isAdmin]);
   const showInvitesTab = canInviteSupervisor || canManageProject;
 
   const canGenerateAiTasks = useMemo(() => {
@@ -186,6 +274,11 @@ export default function ProjectDetails() {
     });
   }, [currentRole, project, currentUserId]);
 
+  const unreadCommentsCount = useMemo(
+    () => countUnreadComments(comments, currentUserId, id),
+    [comments, currentUserId, id, commentsSeenTick],
+  );
+
   const tabDefs = useMemo(() => {
     const defs = [
       {
@@ -194,6 +287,14 @@ export default function ProjectDetails() {
         label: t("projectDetails.tabOverview"),
       },
     ];
+    if (defenseSession) {
+      defs.push({
+        id: "defense",
+        icon: GavelRoundedIcon,
+        label: t("projectDetails.tabDefense"),
+        needsAction: canRecordDefenseResult && !defenseResult?.result,
+      });
+    }
     if (showInvitesTab) {
       defs.push({
         id: "invites",
@@ -206,16 +307,20 @@ export default function ProjectDetails() {
         id: "tasks",
         icon: TaskAltRoundedIcon,
         label: t("projectDetails.tabTasks"),
+        count: tasks.length,
       },
       {
         id: "comments",
         icon: ForumRoundedIcon,
         label: t("projectDetails.tabComments"),
+        count: unreadCommentsCount > 0 ? unreadCommentsCount : undefined,
+        unread: unreadCommentsCount,
       },
       {
         id: "versions",
         icon: FolderZipRoundedIcon,
         label: t("projectDetails.tabVersions"),
+        count: versions.length,
       },
       {
         id: "timeline",
@@ -224,16 +329,123 @@ export default function ProjectDetails() {
       },
     );
     return defs;
-  }, [showInvitesTab, t]);
+  }, [
+    showInvitesTab,
+    t,
+    defenseSession,
+    canRecordDefenseResult,
+    defenseResult?.result,
+    tasks.length,
+    versions.length,
+    unreadCommentsCount,
+  ]);
 
   const activeTabId = tabDefs[activeTab]?.id ?? "overview";
 
   useEffect(() => {
+    if (activeTabId !== "comments" || !currentUserId || !id) return;
+    markCommentsSeen(
+      currentUserId,
+      id,
+      comments.map((c) => c?.id),
+    );
+    setCommentsSeenTick((v) => v + 1);
+  }, [activeTabId, comments, currentUserId, id]);
+
+  useEffect(() => {
+    if (activeTab >= tabDefs.length) {
+      setActiveTab(0);
+    }
+  }, [activeTab, tabDefs.length]);
+
+  useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const tab = params.get("tab") || "overview";
-    const idx = tabDefs.findIndex((d) => d.id === tab);
+    const tabFromUrl = params.get("tab");
+    if (tabFromUrl) {
+      const idx = tabDefs.findIndex((d) => d.id === tabFromUrl);
+      if (idx >= 0) setActiveTab(idx);
+      defaultTabApplied.current = true;
+      return;
+    }
+
+    if (defaultTabApplied.current || loading || !project) return;
+    const idx = tabDefs.findIndex((d) => d.id === "overview");
     if (idx >= 0) setActiveTab(idx);
-  }, [location.search, tabDefs]);
+    defaultTabApplied.current = true;
+  }, [location.search, tabDefs, loading, project]);
+
+  const openDefenseTab = () => {
+    const idx = tabDefs.findIndex((d) => d.id === "defense");
+    if (idx >= 0) {
+      setActiveTab(idx);
+      const params = new URLSearchParams(location.search);
+      params.set("tab", "defense");
+      navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+    }
+  };
+
+  const openTasksTab = () => {
+    const idx = tabDefs.findIndex((d) => d.id === "tasks");
+    if (idx >= 0) {
+      setActiveTab(idx);
+      const params = new URLSearchParams(location.search);
+      params.set("tab", "tasks");
+      navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+    }
+  };
+
+  const handleTabChange = (_e, newValue) => {
+    setActiveTab(newValue);
+    const tabId = tabDefs[newValue]?.id;
+    if (!tabId) return;
+    const params = new URLSearchParams(location.search);
+    params.set("tab", tabId);
+    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+  };
+
+  const handleDefenseResultRecorded = (payload) => {
+    setDefenseResult((prev) => ({
+      ...(prev || {}),
+      result: payload?.result,
+      recorded_at: payload?.recorded_at,
+      stage_name: payload?.stage_name,
+      stage_is_decisive: payload?.stage_is_decisive,
+      recorded_by: payload?.recorded_by,
+      next_stage: payload?.next_stage,
+      track_completed: payload?.track_completed,
+      graduated: payload?.graduated,
+    }));
+
+    if (payload?.graduated || payload?.track_completed) {
+      toast.success(t("projectDetails.graduatedToast"));
+      refreshProfile?.();
+    } else if (payload?.next_stage?.name) {
+      toast.success(
+        t("projectDetails.trackMovedToast", {
+          name: payload.next_stage.name,
+        }),
+      );
+    }
+
+    reloadProject();
+  };
+
+  const reloadProject = async () => {
+    const { res, data } = await apiFetch(`${API_BASE_URL}/project/${id}`, {
+      headers: authHeaders(),
+    });
+    if (res.ok) {
+      const p = data?.project || data;
+      setProject(p);
+      setDefenseSession(
+        data?.defense_session ||
+          p?.active_defense_session ||
+          p?.activeDefenseSession ||
+          null,
+      );
+      setDefenseResult(data?.defense_result || null);
+    }
+  };
 
   useEffect(() => {
     if (!token) return navigate("/login");
@@ -261,6 +473,13 @@ export default function ProjectDetails() {
 
         const p = projectR.data?.project || projectR.data;
         setProject(p);
+        setDefenseSession(
+          projectR.data?.defense_session ||
+            p?.active_defense_session ||
+            p?.activeDefenseSession ||
+            null,
+        );
+        setDefenseResult(projectR.data?.defense_result || null);
 
         if (tasksR.res.ok) {
           setTasks(tasksR.data?.tasks || []);
@@ -348,7 +567,46 @@ export default function ProjectDetails() {
     });
   };
 
-  /** Opens confirmation to permanently delete this project. */
+  /** Opens confirmation to leave this project (students only). */
+  const handleLeaveProject = () => {
+    if (!project?.id) return;
+    const isSoloOwner = isProjectOwner && membersCount <= 1;
+    setDialogConfig({
+      isOpen: true,
+      title: t("projectDetails.leaveProjectTitle"),
+      content: isSoloOwner
+        ? t("projectDetails.leaveProjectSoloOwnerContent")
+        : isProjectOwner
+          ? t("projectDetails.leaveProjectOwnerContent")
+          : t("projectDetails.leaveProjectMemberContent"),
+      confirmText: t("projectDetails.leaveProjectConfirm"),
+      confirmColor: "warning",
+      onConfirm: async () => {
+        try {
+          setDialogLoading(true);
+          const { res, data } = await apiFetch(
+            `${API_BASE_URL}/project/${project.id}/leave`,
+            { method: "POST", headers: authHeaders() },
+          );
+          if (!res.ok) {
+            toast.error(data?.message || t("projectDetails.operationFailed"));
+            return;
+          }
+          toast.success(
+            data?.message || t("projectDetails.leaveProjectSuccess"),
+          );
+          closeDialog();
+          navigate("/dashboard/projects");
+        } catch {
+          toast.error(t("common.serverError"));
+        } finally {
+          setDialogLoading(false);
+        }
+      },
+    });
+  };
+
+  /** Opens confirmation to permanently delete this project (admin only). */
   const handleDeleteProject = () => {
     setDialogConfig({
       isOpen: true,
@@ -481,186 +739,481 @@ export default function ProjectDetails() {
   return (
     <Box
       sx={{
-        px: { xs: 1.5, sm: 2, md: 2.5 },
-        pt: { xs: 1, md: 1.5 },
-        pb: 2,
         width: "100%",
+        maxWidth: "100%",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: { xs: "calc(100vh - 72px)", md: "calc(100vh - 88px)" },
+        px: 0,
+        pb: 0,
       }}
     >
+      {/* Compact header */}
       <Paper
         elevation={0}
         sx={{
-          borderRadius: 2.5,
+          borderRadius: { xs: 0, md: 2.5 },
           border: "1px solid",
           borderColor: "divider",
-          mb: 1.5,
+          mb: 0,
           overflow: "hidden",
-          boxShadow: (theme) =>
-            theme.palette.mode === "dark"
-              ? "none"
-              : "0 4px 16px rgba(15,23,42,0.06)",
+          mx: { xs: 0, md: 0.5 },
+          mt: { xs: 0, md: 0.5 },
         }}
       >
         <Box
           style={rtlSafeGradientStyle(roleTheme.gradient)}
           sx={{
-            px: { xs: 1.5, md: 2 },
-            py: { xs: 1.25, md: 1.5 },
+            px: { xs: 1.25, md: 2 },
+            py: { xs: 1, md: 1.15 },
             color: "#fff",
           }}
         >
           <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1.25}
+            direction="row"
+            spacing={1}
+            alignItems="center"
             justifyContent="space-between"
-            alignItems={{ xs: "flex-start", sm: "center" }}
           >
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: 900,
-                  lineHeight: 1.2,
-                  fontSize: { xs: "1.15rem", md: "1.35rem" },
-                  ...textEllipsisSx,
-                }}
-              >
-                {project.title}
-              </Typography>
-              <Stack
-                direction="row"
-                spacing={0.75}
-                alignItems="center"
-                sx={{ mt: 0.75, flexWrap: "wrap", gap: 0.5 }}
-              >
-                {statusChip(derivedProjectStatus)}
-                {project.supervisor?.name && (
-                  <Chip
-                    size="small"
-                    icon={
-                      <SchoolRoundedIcon sx={{ fontSize: "16px !important" }} />
-                    }
-                    label={t("projectDetails.supervisorLabel", {
-                      name: project.supervisor.name,
-                    })}
-                    sx={{
-                      height: 24,
-                      fontSize: "0.72rem",
-                      fontWeight: 700,
-                      bgcolor: "rgba(255,255,255,0.14)",
-                      color: "#fff",
-                      border: "1px solid rgba(255,255,255,0.25)",
-                      "& .MuiChip-icon": { color: "#fff" },
-                    }}
-                  />
-                )}
-                <Chip
-                  size="small"
-                  label={t("projectDetails.membersLabel", {
-                    count: membersCount,
-                  })}
-                  sx={{
-                    height: 24,
-                    fontSize: "0.72rem",
-                    fontWeight: 700,
-                    bgcolor: "rgba(255,255,255,0.14)",
-                    color: "#fff",
-                    border: "1px solid rgba(255,255,255,0.25)",
-                  }}
-                />
-              </Stack>
-            </Box>
             <Stack
               direction="row"
-              spacing={1}
+              spacing={0.75}
               alignItems="center"
-              sx={{ flexShrink: 0 }}
+              sx={{ minWidth: 0, flex: 1 }}
             >
-              {canLeaveSupervision && project.supervisor_id && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<ExitToAppRoundedIcon />}
-                  onClick={handleLeaveSupervision}
-                  sx={{
-                    borderRadius: 1.5,
-                    fontWeight: 700,
-                    fontSize: "0.8rem",
-                    py: 0.5,
-                    color: "#fff",
-                    borderColor: "rgba(255,255,255,0.55)",
-                    "&:hover": {
-                      borderColor: "#fff",
-                      bgcolor: "rgba(255,255,255,0.1)",
-                    },
-                  }}
-                >
-                  {t("projectDetails.cancelSupervision")}
-                </Button>
-              )}
-              <Button
+              <IconButton
                 component={RouterLink}
                 to="/dashboard/projects"
                 size="small"
-                variant="outlined"
-                startIcon={<ArrowBackRoundedIcon />}
+                aria-label={t("projectDetails.back")}
                 sx={{
-                  borderRadius: 1.5,
-                  fontWeight: 800,
-                  fontSize: "0.8rem",
-                  py: 0.5,
                   color: "#fff",
-                  borderColor: "rgba(255,255,255,0.55)",
-                  "&:hover": {
-                    borderColor: "#fff",
-                    bgcolor: "rgba(255,255,255,0.1)",
-                  },
+                  flexShrink: 0,
+                  bgcolor: "rgba(255,255,255,0.12)",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.22)" },
                 }}
               >
-                {t("projectDetails.back")}
-              </Button>
+                <ArrowBackRoundedIcon fontSize="small" />
+              </IconButton>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: 900,
+                    lineHeight: 1.25,
+                    fontSize: { xs: "0.98rem", md: "1.1rem" },
+                    ...textEllipsisSx,
+                  }}
+                >
+                  {project.title}
+                </Typography>
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  alignItems="center"
+                  sx={{ mt: 0.35, flexWrap: "wrap", gap: 0.4 }}
+                >
+                  {statusChip(derivedProjectStatus)}
+                  {project.track_stage?.phase_name && (
+                    <Chip
+                      size="small"
+                      icon={
+                        <SchoolRoundedIcon sx={{ fontSize: "14px !important" }} />
+                      }
+                      label={
+                        project.track_stage.step_name
+                          ? `${project.track_stage.phase_name} · ${project.track_stage.step_name}`
+                          : project.track_stage.phase_name
+                      }
+                      sx={{
+                        height: 22,
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        bgcolor: "rgba(255,255,255,0.14)",
+                        color: "#fff",
+                        border: "1px solid rgba(255,255,255,0.25)",
+                        "& .MuiChip-icon": { color: "#fff" },
+                      }}
+                    />
+                  )}
+                  {defenseSession && (
+                    <Chip
+                      size="small"
+                      icon={
+                        <GavelRoundedIcon sx={{ fontSize: "14px !important" }} />
+                      }
+                      label={t("projectDetails.tabDefense")}
+                      onClick={openDefenseTab}
+                      sx={{
+                        height: 22,
+                        fontSize: "0.68rem",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        bgcolor: "rgba(255,255,255,0.22)",
+                        color: "#fff",
+                        border: "1px solid rgba(255,255,255,0.4)",
+                        "& .MuiChip-icon": { color: "#fff" },
+                      }}
+                    />
+                  )}
+                  {(project.user?.status === "graduated" ||
+                    defenseResult?.graduated ||
+                    defenseResult?.track_completed) && (
+                    <Chip
+                      size="small"
+                      color="success"
+                      label={t("projectDetails.graduateBadge")}
+                      sx={{ height: 22, fontSize: "0.68rem", fontWeight: 800 }}
+                    />
+                  )}
+                  {!isMobile && project.supervisor?.name && (
+                    <Chip
+                      size="small"
+                      icon={
+                        <SchoolRoundedIcon sx={{ fontSize: "14px !important" }} />
+                      }
+                      label={t("projectDetails.supervisorLabel", {
+                        name: project.supervisor.name,
+                      })}
+                      sx={{
+                        height: 22,
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        bgcolor: "rgba(255,255,255,0.14)",
+                        color: "#fff",
+                        border: "1px solid rgba(255,255,255,0.25)",
+                        "& .MuiChip-icon": { color: "#fff" },
+                      }}
+                    />
+                  )}
+                </Stack>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={0.25} alignItems="center" sx={{ flexShrink: 0 }}>
+              {(canLeaveProject || canLeaveSupervision) && (
+                <>
+                  <IconButton
+                    size="small"
+                    aria-label={t("projectDetails.moreActions")}
+                    onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
+                    sx={{
+                      color: "#fff",
+                      bgcolor: "rgba(255,255,255,0.12)",
+                      "&:hover": { bgcolor: "rgba(255,255,255,0.22)" },
+                    }}
+                  >
+                    <MoreVertRoundedIcon fontSize="small" />
+                  </IconButton>
+                  <Menu
+                    anchorEl={actionsMenuAnchor}
+                    open={Boolean(actionsMenuAnchor)}
+                    onClose={() => setActionsMenuAnchor(null)}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    transformOrigin={{ vertical: "top", horizontal: "right" }}
+                  >
+                    {canLeaveProject && (
+                      <MenuItem
+                        onClick={() => {
+                          setActionsMenuAnchor(null);
+                          handleLeaveProject();
+                        }}
+                      >
+                        <ListItemIcon>
+                          <ExitToAppRoundedIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>{t("projectDetails.leaveProject")}</ListItemText>
+                      </MenuItem>
+                    )}
+                    {canLeaveSupervision && project.supervisor_id && (
+                      <MenuItem
+                        onClick={() => {
+                          setActionsMenuAnchor(null);
+                          handleLeaveSupervision();
+                        }}
+                      >
+                        <ListItemIcon>
+                          <ExitToAppRoundedIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>
+                          {t("projectDetails.cancelSupervision")}
+                        </ListItemText>
+                      </MenuItem>
+                    )}
+                  </Menu>
+                </>
+              )}
             </Stack>
           </Stack>
         </Box>
-
-        <Box sx={{ px: { xs: 0.5, md: 1 }, bgcolor: "background.paper" }}>
-          <Tabs
-            value={activeTab}
-            onChange={(e, newValue) => setActiveTab(newValue)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              minHeight: 44,
-              "& .MuiTab-root": {
-                fontWeight: 800,
-                fontSize: "0.88rem",
-                textTransform: "none",
-                minHeight: 44,
-                py: 1,
-                gap: 0.5,
-              },
-              "& .Mui-selected": { color: "primary.main" },
-              "& .MuiTabs-indicator": {
-                height: 3,
-                borderRadius: "3px 3px 0 0",
-              },
-            }}
-          >
-            {tabDefs.map((tab) => (
-              <Tab
-                key={tab.id}
-                icon={React.createElement(tab.icon)}
-                iconPosition="start"
-                label={tab.label}
-              />
-            ))}
-          </Tabs>
-        </Box>
       </Paper>
 
-      <Box sx={{ minHeight: "60vh", width: "100%" }}>
+      {/* Primary project tabs — main navigation for the page */}
+      <Paper
+        elevation={0}
+        sx={{
+          mx: { xs: 0, md: 0.5 },
+          mt: 1,
+          mb: 0,
+          borderRadius: { xs: 0, md: 2.5 },
+          border: "1px solid",
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          position: "sticky",
+          top: 0,
+          zIndex: 8,
+          boxShadow: (theme) =>
+            theme.palette.mode === "dark"
+              ? "0 8px 20px rgba(0,0,0,0.35)"
+              : "0 6px 18px rgba(15,23,42,0.06)",
+        }}
+      >
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          TabIndicatorProps={{ sx: { display: "none" } }}
+          sx={{
+            minHeight: 56,
+            px: { xs: 0.75, md: 1.25 },
+            py: 0.85,
+            "& .MuiTabs-flexContainer": {
+              gap: 0.75,
+              alignItems: "center",
+            },
+            "& .MuiTab-root": {
+              minHeight: 42,
+              minWidth: "auto",
+              px: { xs: 1.25, md: 1.6 },
+              py: 0.85,
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+              fontSize: { xs: "0.82rem", md: "0.9rem" },
+              color: "text.secondary",
+              gap: 0.75,
+              border: "1px solid transparent",
+              transition: "background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease",
+              "&:hover": {
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.06)"
+                    : "rgba(15,23,42,0.04)",
+                color: "text.primary",
+              },
+              "&.Mui-selected": {
+                color: "primary.main",
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(59,130,246,0.18)"
+                    : "rgba(37,99,235,0.1)",
+                borderColor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(59,130,246,0.45)"
+                    : "rgba(37,99,235,0.28)",
+              },
+            },
+            "& .MuiTab-iconWrapper": {
+              marginBottom: "0 !important",
+              marginInlineEnd: "6px !important",
+            },
+            "& .MuiTabs-scrollButtons": {
+              "&.Mui-disabled": { opacity: 0.25 },
+            },
+          }}
+        >
+          {tabDefs.map((tab) => (
+            <Tab
+              key={tab.id}
+              disableRipple
+              icon={React.createElement(tab.icon, { sx: { fontSize: 20 } })}
+              iconPosition="start"
+              aria-label={tab.label}
+              label={
+                <Stack direction="row" spacing={0.75} alignItems="center">
+                  <Box component="span" sx={{ whiteSpace: "nowrap" }}>
+                    {tab.label}
+                  </Box>
+                  {typeof tab.count === "number" && tab.count > 0 && (
+                    <Box
+                      component="span"
+                      sx={
+                        tab.id === "comments" && tab.unread > 0
+                          ? {
+                              minWidth: 20,
+                              height: 20,
+                              px: 0.65,
+                              borderRadius: 999,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "0.7rem",
+                              fontWeight: 900,
+                              lineHeight: 1,
+                              color: "#fff",
+                              bgcolor: "error.main",
+                              boxShadow: "0 0 0 0 rgba(239,68,68,0.55)",
+                              animation: "pmsCommentPulse 1.6s ease-out infinite",
+                              "@keyframes pmsCommentPulse": {
+                                "0%": {
+                                  boxShadow: "0 0 0 0 rgba(239,68,68,0.55)",
+                                },
+                                "70%": {
+                                  boxShadow: "0 0 0 8px rgba(239,68,68,0)",
+                                },
+                                "100%": {
+                                  boxShadow: "0 0 0 0 rgba(239,68,68,0)",
+                                },
+                              },
+                            }
+                          : {
+                              minWidth: 20,
+                              height: 20,
+                              px: 0.6,
+                              borderRadius: 999,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "0.7rem",
+                              fontWeight: 900,
+                              lineHeight: 1,
+                              bgcolor: (theme) =>
+                                theme.palette.mode === "dark"
+                                  ? "rgba(255,255,255,0.12)"
+                                  : "rgba(15,23,42,0.08)",
+                            }
+                      }
+                    >
+                      {tab.count}
+                    </Box>
+                  )}
+                  {tab.needsAction && (
+                    <Box
+                      component="span"
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        bgcolor: "warning.main",
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                </Stack>
+              }
+            />
+          ))}
+        </Tabs>
+      </Paper>
+
+      {/* Tab content */}
+      <Box
+        sx={{
+          flex: 1,
+          width: "100%",
+          minHeight: 0,
+          px: { xs: 1, md: 1.25 },
+          pt: 1.5,
+          pb: 2,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         {activeTabId === "overview" && (
-          <Stack spacing={2}>
+          <Stack spacing={1.75}>
+            {(project?.user?.status === "graduated" ||
+              defenseResult?.graduated ||
+              defenseResult?.track_completed ||
+              (project?.status === "completed" &&
+                currentRole === "student" &&
+                !defenseSession)) && (
+              <Alert
+                severity="success"
+                icon={<SchoolRoundedIcon fontSize="inherit" />}
+                sx={{
+                  borderRadius: 2.5,
+                  border: "1px solid",
+                  borderColor: "success.light",
+                  py: 0.75,
+                  "& .MuiAlert-message": { width: "100%" },
+                }}
+              >
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1}
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  justifyContent="space-between"
+                >
+                  <Box>
+                    <Typography sx={{ fontWeight: 900, fontSize: "0.95rem" }}>
+                      {t("projectDetails.graduationTitle")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 0.15 }}>
+                      {t("projectDetails.graduationBody")}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    color="success"
+                    size="small"
+                    label={t("projectDetails.graduateBadge")}
+                    sx={{ fontWeight: 900 }}
+                  />
+                </Stack>
+              </Alert>
+            )}
+
+            {project?.track_stage && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: { xs: 1.5, md: 2 },
+                  borderRadius: 2.5,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "background.paper",
+                }}
+              >
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  flexWrap="wrap"
+                  useFlexGap
+                  alignItems="center"
+                  sx={{
+                    mb: project.track_stage.phase_progress?.steps?.length ? 1.25 : 0,
+                  }}
+                >
+                  {project.track_stage.phase_name && (
+                    <Chip
+                      size="small"
+                      color="secondary"
+                      variant="outlined"
+                      label={project.track_stage.phase_name}
+                      sx={{ fontWeight: 800 }}
+                    />
+                  )}
+                  {project.track_stage.step_name && (
+                    <Chip
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      label={project.track_stage.step_name}
+                      sx={{ fontWeight: 800 }}
+                    />
+                  )}
+                </Stack>
+                {project.track_stage.phase_progress?.steps?.length > 0 && (
+                  <ProjectPhaseProgress
+                    trackStage={project.track_stage}
+                    dense
+                    showPhaseTitle={false}
+                  />
+                )}
+              </Paper>
+            )}
+
             <ProjectInfoCard
               project={project}
               setProject={setProject}
@@ -668,8 +1221,39 @@ export default function ProjectDetails() {
               canEditProject={canEditProject}
               canDeleteProject={canDeleteProject}
               handleDeleteProject={handleDeleteProject}
+              onOpenTasks={openTasksTab}
+              compact
             />
-            <ProjectCharts tasks={tasks} />
+          </Stack>
+        )}
+
+        {activeTabId === "defense" && defenseSession && (
+          <Stack spacing={1.5}>
+            <DefenseActionBar
+              defenseSession={defenseSession}
+              defenseResult={defenseResult}
+              canRecordResult={canRecordDefenseResult}
+              onRecordClick={() => setDefenseResultDialogOpen(true)}
+              onCompleteClick={() => setDefenseCompleteDialogOpen(true)}
+            />
+            <DefenseSessionCard
+              defenseSession={defenseSession}
+              canAssignCommittee={
+                isAdmin &&
+                Boolean(defenseSession) &&
+                !hasScheduledCommittee
+              }
+              onAssignCommittee={() => setAssignCommitteeOpen(true)}
+              canRecordResult={canRecordDefenseResult}
+              isChair={isDefenseChair}
+              defenseResult={defenseResult}
+              resultDialogOpen={defenseResultDialogOpen}
+              onResultDialogOpenChange={setDefenseResultDialogOpen}
+              completeDialogOpen={defenseCompleteDialogOpen}
+              onCompleteDialogOpenChange={setDefenseCompleteDialogOpen}
+              onResultRecorded={handleDefenseResultRecorded}
+              compact
+            />
           </Stack>
         )}
 
@@ -679,6 +1263,7 @@ export default function ProjectDetails() {
             project={project}
             canInviteSupervisor={canInviteSupervisor}
             canManageProject={canManageProject}
+            compact
           />
         )}
 
@@ -693,6 +1278,7 @@ export default function ProjectDetails() {
             setDialogConfig={setDialogConfig}
             setDialogLoading={setDialogLoading}
             closeDialog={closeDialog}
+            compact
           />
         )}
 
@@ -706,6 +1292,7 @@ export default function ProjectDetails() {
             setDialogConfig={setDialogConfig}
             setDialogLoading={setDialogLoading}
             closeDialog={closeDialog}
+            compact
           />
         )}
 
@@ -722,10 +1309,13 @@ export default function ProjectDetails() {
             setDialogConfig={setDialogConfig}
             setDialogLoading={setDialogLoading}
             closeDialog={closeDialog}
+            compact
           />
         )}
 
-        {activeTabId === "timeline" && <ProjectTimeline projectId={id} />}
+        {activeTabId === "timeline" && (
+          <ProjectTimeline projectId={id} compact />
+        )}
       </Box>
 
       <ConfirmDialog
@@ -737,6 +1327,16 @@ export default function ProjectDetails() {
         loading={dialogLoading}
         onClose={closeDialog}
         onConfirm={dialogConfig.onConfirm}
+      />
+
+      <CommitteeAssignDialog
+        open={assignCommitteeOpen}
+        onClose={() => setAssignCommitteeOpen(false)}
+        defenseSession={defenseSession}
+        onAssigned={async () => {
+          toast.success(t("committees.assignSuccess"));
+          await reloadProject();
+        }}
       />
     </Box>
   );

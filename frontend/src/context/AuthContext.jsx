@@ -70,10 +70,15 @@ export function AuthProvider({ children }) {
     setUniversityName(resolvedUniversityName);
     setSessionBlock(null);
 
+    const hasSupervisorUniversity =
+      roleName === "supervisor" &&
+      (supervisorMemberships.length > 0 || activeSupervisorUnis.length > 0);
+
     if (
       data?.user &&
       data.user.university_id == null &&
-      roleName !== "super_admin"
+      roleName !== "super_admin" &&
+      !hasSupervisorUniversity
     ) {
       setSessionBlock("no_university");
     }
@@ -164,9 +169,15 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   const isSuperAdmin = role === "super_admin";
-  const isActive = status === "active";
+  const isActive = status === "active" || status === "graduated";
+  const isGraduated = status === "graduated";
   const isPending = status === "pending";
   const isRejected = status === "rejected";
+
+  const refreshProfile = async () => {
+    if (!token) return false;
+    return fetchUser(token);
+  };
 
   return (
     <AuthContext.Provider
@@ -184,8 +195,10 @@ export function AuthProvider({ children }) {
         sessionBlock,
         isSuperAdmin,
         isActive,
+        isGraduated,
         isPending,
         isRejected,
+        refreshProfile,
         authHeaders,
         apiFetch,
         API_BASE_URL,

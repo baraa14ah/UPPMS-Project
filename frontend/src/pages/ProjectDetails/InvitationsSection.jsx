@@ -44,6 +44,7 @@ export default function InvitationsSection({
   project,
   canInviteSupervisor,
   canManageProject,
+  compact = false,
 }) {
   const { t } = useLanguage();
   const { authHeaders, apiFetch, API_BASE_URL } = useAuth();
@@ -340,6 +341,7 @@ export default function InvitationsSection({
       title={t("projects.invitesTitle")}
       subtitle={t("projects.invitesSubtitle")}
       accent="#10B981"
+      compact={compact}
       sx={{
         mt: 0,
         boxShadow: (theme) =>
