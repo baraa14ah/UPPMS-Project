@@ -1,0 +1,27 @@
+sequenceDiagram
+  autonumber
+  actor Owner as Student (Owner)
+  participant Ctrl as StudentInvitationController
+  participant Svc as InvitationService
+  actor Invitee as Student (Invitee)
+
+  Owner->>Ctrl: invite student to project
+  Ctrl->>Svc: invite(member)
+  Svc->>Svc: check track eligibility
+  alt Eligible
+    Svc-->>Ctrl: invitation created
+    Ctrl-->>Invitee: send invitation
+    Invitee->>Ctrl: accept or decline
+    Ctrl->>Svc: respond(invite)
+    alt Accepted
+      Svc-->>Ctrl: member added
+      Ctrl-->>Owner: member joined
+      Ctrl-->>Invitee: welcome to project
+    else Declined
+      Svc-->>Ctrl: declined
+      Ctrl-->>Owner: invitation declined
+    end
+  else Not eligible
+    Svc-->>Ctrl: blocked by track rules
+    Ctrl-->>Owner: cannot invite
+  end

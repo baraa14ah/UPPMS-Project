@@ -1,0 +1,17 @@
+sequenceDiagram
+  autonumber
+  actor Super as Super Admin
+  participant PAC as PlatformAdminController
+  participant UC as UniversityController
+
+  Super->>PAC: open platform admin
+  PAC-->>Super: dashboard
+
+  Super->>UC: add or update university
+  UC-->>Super: university saved
+
+  Super->>PAC: manage university admins
+  PAC-->>Super: admins updated
+
+  Super->>PAC: check platform status
+  PAC-->>Super: health summary

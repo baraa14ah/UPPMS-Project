@@ -1,0 +1,28 @@
+sequenceDiagram
+  autonumber
+  actor Student
+  participant TC as TaskController
+  participant ATC as AITaskController
+  participant Svc as TaskService
+  actor Supervisor
+
+  Student->>TC: open project tasks
+  TC->>Svc: getProjectTasks()
+  Svc-->>TC: task list
+  TC-->>Student: show tasks
+
+  Student->>TC: create or update task
+  TC->>Svc: saveTask()
+  Svc-->>TC: saved
+  TC-->>Student: task updated
+
+  Note over Student,ATC: Optional - AI task breakdown
+  Student->>ATC: generate tasks from project
+  ATC->>Svc: insert generated tasks
+  Svc-->>ATC: tasks added
+  ATC-->>Student: new tasks ready
+
+  Supervisor->>TC: review team progress
+  TC->>Svc: getProjectTasks()
+  Svc-->>TC: status
+  TC-->>Supervisor: task progress

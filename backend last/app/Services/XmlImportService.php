@@ -372,11 +372,12 @@ class XmlImportService
                     ],
                 ],
             ],
+            // Student match = email + university_number; supervisor match = email only.
             'example' => <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <authorized_users>
-  <student university_number="2024001234" email="student@university.edu" full_name="Student Name" />
-  <supervisor email="prof@university.edu" full_name="Professor Name" />
+  <student university_number="2026001001" email="student01@spu.edu.sy" full_name="Student Name" />
+  <supervisor email="supervisor01@spu.edu.sy" full_name="Professor Name" />
 </authorized_users>
 XML,
         ];

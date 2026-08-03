@@ -1,18 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<authorized_users>
-  <!-- Students: register with the SAME email + student_number = university_number -->
-  <student university_number="2024001001" email="ahmad.hassan@spu.edu.sy" full_name="Ahmad Hassan" />
-  <student university_number="2024001002" email="sara.ali@spu.edu.sy" full_name="Sara Ali" />
-  <student university_number="2024001003" email="omar.khalil@spu.edu.sy" full_name="Omar Khalil" />
-  <student university_number="2024001004" email="layan.nasser@spu.edu.sy" full_name="Layan Nasser" />
-  <student university_number="2024001005" email="youssef.farid@spu.edu.sy" full_name="Youssef Farid" />
-  <student university_number="2024001006" email="maya.salim@spu.edu.sy" full_name="Maya Salim" />
-  <student university_number="2024001007" email="kareem.taha@spu.edu.sy" full_name="Kareem Taha" />
-  <student university_number="2024001008" email="nour.ibrahim@spu.edu.sy" full_name="Nour Ibrahim" />
+<!--
+  UPPMS — authorized users sample (schema 1.0)
 
-  <!-- Supervisors: register with the SAME email (no university_number) -->
-  <supervisor email="dr.nasser@spu.edu.sy" full_name="Dr. Nasser Mahmoud" />
-  <supervisor email="dr.layla@spu.edu.sy" full_name="Dr. Layla Ibrahim" />
-  <supervisor email="dr.hassan@spu.edu.sy" full_name="Dr. Hassan Omar" />
-  <supervisor email="dr.rania@spu.edu.sy" full_name="Dr. Rania Saleh" />
+  Matching on register (latest):
+  - Student:    email + university_number  (both must match)
+                Form field "student_number" = XML attribute "university_number"
+  - Supervisor: email only
+                Do NOT put university_number on <supervisor>
+
+  How to test:
+  1) Admin → Users → XML Import → upload this file
+  2) Register a student with the SAME email + number from a <student> row
+  3) Register a supervisor with the SAME email from a <supervisor> row
+  4) Matched accounts become active immediately
+-->
+<authorized_users>
+  <!-- Students: email + university_number -->
+  <student university_number="2026001001" email="student01@spu.edu.sy" full_name="Ahmad Hassan" />
+  <student university_number="2026001002" email="student02@spu.edu.sy" full_name="Sara Ali" />
+  <student university_number="2026001003" email="student03@spu.edu.sy" full_name="Omar Khalil" />
+  <student university_number="2026001004" email="student04@spu.edu.sy" full_name="Layan Nasser" />
+  <student university_number="2026001005" email="student05@spu.edu.sy" full_name="Youssef Farid" />
+  <student university_number="2026001006" email="student06@spu.edu.sy" full_name="Maya Salim" />
+  <student university_number="2026001007" email="student07@spu.edu.sy" full_name="Kareem Taha" />
+  <student university_number="2026001008" email="student08@spu.edu.sy" full_name="Nour Ibrahim" />
+
+  <!-- Supervisors: email only (no university_number) -->
+  <supervisor email="supervisor01@spu.edu.sy" full_name="Dr. Nasser Mahmoud" />
+  <supervisor email="supervisor02@spu.edu.sy" full_name="Dr. Layla Ibrahim" />
+  <supervisor email="supervisor03@spu.edu.sy" full_name="Dr. Hassan Omar" />
+  <supervisor email="supervisor04@spu.edu.sy" full_name="Dr. Rania Saleh" />
 </authorized_users>

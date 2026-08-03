@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AcademicStageConfig;
 use App\Models\DefenseSession;
 use App\Models\Project;
+use App\Models\ProjectProposal;
 use App\Models\StudentProgress;
 use App\Models\StudentProgressHistory;
 use App\Models\Track;
@@ -579,6 +580,82 @@ class TrackService
             $student->update(['track_id' => $stage->track_id]);
             $this->ensureStageProgressForProposal($student, $stage);
         });
+    }
+
+    /**
+     * Undo premature track locks from withdrawn/pending-only proposals.
+     * Track assignment + in_progress progress belong after approval (project exists)
+     * or after real stage results (passed/failed/incomplete).
+     */
+    public function releaseTrackAssignmentIfProposalWithdrawn(User $student, ?int $trackStageId = null): void
+    {
+        $hasActiveProject = Project::query()
+            ->where('user_id', $student->id)
+            ->whereNotIn('status', ['completed', 'cancelled', 'closed'])
+            ->exists();
+
+        $trackId = $student->track_id;
+
+        $hasMeaningfulProgress = $trackId
+            ? StudentProgress::query()
+                ->where('student_id', $student->id)
+                ->where('track_id', $trackId)
+                ->whereIn('status', ['passed', 'failed', 'incomplete'])
+                ->exists()
+            : false;
+
+        // Keep assignment only when the student truly started the academic path.
+        if ($hasActiveProject || $hasMeaningfulProgress) {
+            if ($trackStageId) {
+                $stillReferencedByProject = Project::query()
+                    ->where('user_id', $student->id)
+                    ->whereHas('proposal', fn ($q) => $q->where('track_stage_id', $trackStageId))
+                    ->whereNotIn('status', ['completed', 'cancelled', 'closed'])
+                    ->exists();
+
+                if (!$stillReferencedByProject) {
+                    $this->deleteInProgressProgressForStage($student, $trackStageId);
+                }
+            }
+
+            return;
+        }
+
+        if (!$trackId) {
+            // Still drop orphan in_progress rows if any.
+            if ($trackStageId) {
+                $this->deleteInProgressProgressForStage($student, $trackStageId);
+            }
+
+            return;
+        }
+
+        StudentProgress::query()
+            ->where('student_id', $student->id)
+            ->where('track_id', $trackId)
+            ->get()
+            ->each(fn (StudentProgress $row) => $this->deleteProgressWithHistory($row));
+
+        $student->update(['track_id' => null]);
+    }
+
+    private function deleteInProgressProgressForStage(User $student, int $trackStageId): void
+    {
+        StudentProgress::query()
+            ->where('student_id', $student->id)
+            ->where('track_stage_id', $trackStageId)
+            ->where('status', 'in_progress')
+            ->get()
+            ->each(fn (StudentProgress $row) => $this->deleteProgressWithHistory($row));
+    }
+
+    private function deleteProgressWithHistory(StudentProgress $progress): void
+    {
+        StudentProgressHistory::query()
+            ->where('student_progress_id', $progress->id)
+            ->delete();
+
+        $progress->delete();
     }
 
     public function resolveProjectTrackStageId(Project $project): ?int
@@ -1196,6 +1273,10 @@ class TrackService
 
     public function getAvailableStagesForStudent(User $student): array
     {
+        // Heal students stuck with track_id after withdrawing all proposals.
+        $this->releaseTrackAssignmentIfProposalWithdrawn($student->fresh());
+        $student->refresh();
+
         $query = Track::query()
             ->where('university_id', $student->university_id)
             ->where('is_active', true)

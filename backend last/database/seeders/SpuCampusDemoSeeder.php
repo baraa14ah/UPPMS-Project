@@ -184,7 +184,7 @@ class SpuCampusDemoSeeder extends Seeder
 
         for ($i = 1; $i <= self::SUPERVISOR_COUNT; $i++) {
             $num = str_pad((string) $i, 2, '0', STR_PAD_LEFT);
-            $supervisors[] = User::updateOrCreate(
+            $supervisor = User::updateOrCreate(
                 ['email' => "spu-campus-supervisor-{$num}@syrian-private.local"],
                 [
                     'name' => self::SUPERVISOR_NAMES[$i - 1] ?? "د. مشرف الحرم {$num}",
@@ -194,6 +194,15 @@ class SpuCampusDemoSeeder extends Seeder
                     'status' => 'active',
                 ],
             );
+
+            // Required so students can pick this supervisor and proposals stay visible.
+            $supervisor->loadMissing('role');
+            $supervisor->syncSupervisorUniversities([$universityId], 'active');
+            $supervisor->supervisorUniversities()->updateExistingPivot($universityId, [
+                'accepting_supervision' => true,
+            ]);
+
+            $supervisors[] = $supervisor;
         }
 
         return $supervisors;

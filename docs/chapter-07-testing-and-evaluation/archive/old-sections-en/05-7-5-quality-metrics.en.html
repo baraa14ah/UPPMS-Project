@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <title>7-5 — Quality Metrics</title>
+  <style>
+  @page { size: A4; margin: 20mm 16mm 18mm 16mm; }
+  body {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 12.5pt; line-height: 1.7; color: #111; margin: 0; background: #fff;
+    text-align: justify; direction: ltr;
+  }
+  .head {
+    border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 22px;
+  }
+  .head .chapter { font-size: 11pt; color: #444; margin: 0 0 6px; }
+  .head h1 { font-size: 17pt; margin: 0; font-weight: bold; text-align: left; }
+  h2 { font-size: 13.5pt; margin: 18px 0 10px; page-break-after: avoid; }
+  h3 { font-size: 12.5pt; margin: 14px 0 8px; page-break-after: avoid; }
+  p { margin: 0 0 11px; }
+  ul, ol { margin: 6px 0 14px; padding-left: 1.4em; }
+  li { margin: 3px 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 10.5pt;
+    page-break-inside: avoid;
+  }
+  th, td { border: 1px solid #222; padding: 7px 8px; text-align: left; vertical-align: top; }
+  th { background: #f3f3f3; font-weight: bold; }
+  .imgbox { margin: 16px 0; text-align: center; page-break-inside: avoid; }
+  .imgbox img { max-width: 100%; height: auto; border: 1px solid #ccc; }
+  .caption { font-size: 11pt; text-align: center; margin: 8px 0 16px; color: #333; }
+  .note {
+    margin: 12px 0; padding: 8px 12px; border: 1px solid #777; font-size: 11.5pt;
+  }
+  .file-ref { font-size: 11pt; color: #444; margin: 8px 0 16px; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 10.5pt; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <p class="chapter">Chapter Seven — Testing and Evaluation · UPPMS</p>
+    <h1>7-5 Quality Metrics</h1>
+  </div>
+  
+<p>
+The following metrics are used to evaluate UPPMS quality after testing.
+</p>
+
+<table>
+  <tr><th>Metric</th><th>Definition</th><th>Measurement in the Project</th></tr>
+  <tr><td>Test Coverage (functional)</td><td>Share of critical modules/features covered by tests</td><td>Core modules covered: XML, Proposals, Tracks, Committees, GA, AI</td></tr>
+  <tr><td>Defect Density</td><td>Defects found ÷ component size</td><td>Defects logged per Spec Kit phase and re-tested</td></tr>
+  <tr><td>Pass Rate</td><td>Passed cases ÷ total executed cases</td><td>Delivery target: ≥ 95% on critical paths</td></tr>
+  <tr><td>Response Time</td><td>API latency for common operations</td><td>CRUD/proposals feel interactive in UI; GA duration grows with input size</td></tr>
+  <tr><td>Error Rate</td><td>Share of incorrect responses / unhandled exceptions</td><td>Monitored via failing tests and Laravel logs</td></tr>
+  <tr><td>Security Isolation</td><td>No cross-university data leakage</td><td>Verified via TenantScope and multi-university Feature tests</td></tr>
+</table>
+
+<h2>Quality Acceptance Criteria</h2>
+<ul>
+  <li>No failures in security, isolation, or XML registration tests.</li>
+  <li>Successful basic acceptance scenarios for Admin / Supervisor / Student.</li>
+  <li>Ability to generate and approve a defense schedule on Campus Demo without visible hard conflicts.</li>
+</ul>
+
+</body>
+</html>

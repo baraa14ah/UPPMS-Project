@@ -48,14 +48,35 @@ class ProjectProposalControllerTest extends TestCase
     }
 
     /** @test */
-    public function student_cannot_submit_when_pending_proposal_exists(): void
+    public function student_can_submit_up_to_three_pending_proposals(): void
     {
-        $this->createProposal(['status' => 'pending']);
         Sanctum::actingAs($this->student);
 
-        $this->postJson('/api/proposals', $this->proposalPayload())
+        $this->postJson('/api/proposals', array_merge($this->proposalPayload(), [
+            'title' => 'Proposal One',
+        ]))->assertCreated();
+
+        $this->postJson('/api/proposals', array_merge($this->proposalPayload(), [
+            'title' => 'Proposal Two',
+        ]))->assertCreated();
+
+        $this->postJson('/api/proposals', array_merge($this->proposalPayload(), [
+            'title' => 'Proposal Three',
+        ]))->assertCreated();
+
+        $this->postJson('/api/proposals', array_merge($this->proposalPayload(), [
+            'title' => 'Proposal Four',
+        ]))
             ->assertStatus(409)
-            ->assertJsonPath('errors.proposal.0', 'existing_pending_proposal');
+            ->assertJsonPath('errors.proposal.0', 'max_proposals_reached');
+
+        $this->assertSame(
+            3,
+            \App\Models\ProjectProposal::withoutGlobalScopes()
+                ->where('student_id', $this->student->id)
+                ->where('status', 'pending')
+                ->count()
+        );
     }
 
     /** @test */
@@ -106,6 +127,48 @@ class ProjectProposalControllerTest extends TestCase
             'supervisor_id' => $this->supervisor->id,
             'status' => 'pending',
         ]);
+    }
+
+    /** @test */
+    public function multi_university_supervisor_sees_proposal_and_project_for_membership_university(): void
+    {
+        // Supervisor primary university differs from the student's university,
+        // but has an active membership at the student's university.
+        $this->supervisor->forceFill(['university_id' => $this->otherUniversity->id])->save();
+        DB::table('supervisor_universities')->updateOrInsert(
+            [
+                'user_id' => $this->supervisor->id,
+                'university_id' => $this->university->id,
+            ],
+            [
+                'status' => 'active',
+                'accepting_supervision' => true,
+            ]
+        );
+
+        $proposal = $this->createProposal([
+            'status' => 'pending',
+            'university_id' => $this->university->id,
+        ]);
+
+        Sanctum::actingAs($this->supervisor);
+
+        $this->getJson('/api/proposals?status=pending')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $proposal->id]);
+
+        $this->postJson("/api/proposals/{$proposal->id}/approve")
+            ->assertOk()
+            ->assertJsonPath('data.project.proposal_id', $proposal->id);
+
+        $this->getJson('/api/projects')
+            ->assertOk()
+            ->assertJsonFragment(['proposal_id' => $proposal->id]);
+
+        Sanctum::actingAs($this->student);
+        $this->getJson('/api/projects')
+            ->assertOk()
+            ->assertJsonFragment(['proposal_id' => $proposal->id]);
     }
 
     /** @test */
@@ -275,21 +338,137 @@ class ProjectProposalControllerTest extends TestCase
     }
 
     /** @test */
-    public function database_trigger_blocks_second_pending_proposal(): void
+    public function submitting_proposal_does_not_lock_student_on_track_until_approve(): void
     {
-        $this->createProposal(['status' => 'pending']);
+        $track = \App\Models\Track::withoutGlobalScopes()->create([
+            'university_id' => $this->university->id,
+            'name' => 'Graduation Track ' . uniqid(),
+            'is_active' => true,
+        ]);
+        $phase = \App\Models\TrackStage::create([
+            'track_id' => $track->id,
+            'name' => 'Phase 1',
+            'sequence_order' => 1,
+            'stage_kind' => 'phase',
+            'parent_id' => null,
+        ]);
+        $step = \App\Models\TrackStage::create([
+            'track_id' => $track->id,
+            'name' => 'Step 1',
+            'sequence_order' => 1,
+            'stage_kind' => 'step',
+            'parent_id' => $phase->id,
+        ]);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        Sanctum::actingAs($this->student);
+        $this->postJson('/api/proposals', array_merge($this->proposalPayload(), [
+            'track_stage_id' => $step->id,
+        ]))->assertCreated();
+
+        $this->student->refresh();
+        $this->assertNull($this->student->track_id);
+        $this->assertDatabaseMissing('student_progress', [
+            'student_id' => $this->student->id,
+            'track_stage_id' => $step->id,
+        ]);
+
+        // Second pending proposal still allowed without track lock.
+        $this->postJson('/api/proposals', array_merge($this->proposalPayload(), [
+            'title' => 'Second idea',
+            'track_stage_id' => $step->id,
+        ]))->assertCreated();
+
+        Sanctum::actingAs($this->supervisor);
+        $proposalId = \App\Models\ProjectProposal::withoutGlobalScopes()
+            ->where('student_id', $this->student->id)
+            ->where('title', 'Second idea')
+            ->value('id');
+
+        $this->postJson("/api/proposals/{$proposalId}/approve")->assertOk();
+
+        $this->student->refresh();
+        $this->assertSame((int) $track->id, (int) $this->student->track_id);
+        $this->assertDatabaseHas('student_progress', [
+            'student_id' => $this->student->id,
+            'track_stage_id' => $step->id,
+            'status' => 'in_progress',
+        ]);
+    }
+
+    /** @test */
+    public function deleting_proposal_releases_track_so_student_can_submit_again(): void
+    {
+        $track = \App\Models\Track::withoutGlobalScopes()->create([
+            'university_id' => $this->university->id,
+            'name' => 'Heal Track ' . uniqid(),
+            'is_active' => true,
+        ]);
+        $phase = \App\Models\TrackStage::create([
+            'track_id' => $track->id,
+            'name' => 'Phase 1',
+            'sequence_order' => 1,
+            'stage_kind' => 'phase',
+            'parent_id' => null,
+        ]);
+        $step = \App\Models\TrackStage::create([
+            'track_id' => $track->id,
+            'name' => 'Step 1',
+            'sequence_order' => 1,
+            'stage_kind' => 'step',
+            'parent_id' => $phase->id,
+        ]);
+
+        // Simulate old bug: student locked on track after submitting a proposal.
+        $this->student->forceFill(['track_id' => $track->id])->save();
+        \App\Models\StudentProgress::withoutGlobalScopes()->create([
+            'student_id' => $this->student->id,
+            'track_id' => $track->id,
+            'track_stage_id' => $step->id,
+            'status' => 'in_progress',
+        ]);
+        $proposal = $this->createProposal([
+            'status' => 'pending',
+            'track_stage_id' => $step->id,
+        ]);
+
+        Sanctum::actingAs($this->student);
+        $this->deleteJson("/api/proposals/{$proposal->id}")->assertOk();
+
+        $this->student->refresh();
+        $this->assertNull($this->student->track_id);
+        $this->assertDatabaseMissing('student_progress', [
+            'student_id' => $this->student->id,
+            'track_stage_id' => $step->id,
+        ]);
+
+        $this->postJson('/api/proposals', array_merge($this->proposalPayload(), [
+            'title' => 'Fresh proposal after delete',
+            'track_stage_id' => $step->id,
+        ]))->assertCreated();
+    }
+
+    /** @test */
+    public function student_can_have_multiple_pending_proposals_in_database(): void
+    {
+        $this->createProposal(['status' => 'pending', 'title' => 'First']);
 
         ProjectProposal::withoutGlobalScopes()->create([
             'university_id' => $this->university->id,
             'student_id' => $this->student->id,
             'requested_supervisor_id' => $this->supervisor->id,
             'title' => 'Second pending',
-            'description' => 'Should be blocked by trigger',
+            'description' => 'Allowed after dropping one-pending trigger',
             'status' => 'pending',
             'resubmission_count' => 0,
         ]);
+
+        $this->assertSame(
+            2,
+            ProjectProposal::withoutGlobalScopes()
+                ->where('student_id', $this->student->id)
+                ->where('status', 'pending')
+                ->count()
+        );
     }
 
     private function seedActors(): void

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>5-4 — Security and Permissions Design</title>
+  <style>
+  @page { size: A4; margin: 20mm 16mm 18mm 16mm; }
+  body {
+    font-family: "Traditional Arabic", "Times New Roman", Times, serif;
+    font-size: 13.5pt; line-height: 1.85; color: #111; margin: 0; background: #fff;
+    text-align: justify; direction: rtl;
+  }
+  .head {
+    border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 22px;
+  }
+  .head .chapter { font-size: 12pt; color: #444; margin: 0 0 6px; text-indent: 0; }
+  .head h1 { font-size: 18pt; margin: 0; font-weight: bold; text-align: right; }
+  .head .code { font-size: 11pt; color: #555; margin-top: 4px; text-indent: 0; }
+  h2 { font-size: 14pt; margin: 18px 0 10px; page-break-after: avoid; }
+  h3 { font-size: 13pt; margin: 14px 0 8px; page-break-after: avoid; }
+  p { margin: 0 0 11px; text-indent: 1.4em; }
+  p.ni { text-indent: 0; }
+  ul, ol { margin: 6px 0 14px; padding-right: 1.6em; }
+  li { margin: 3px 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 11pt;
+    direction: rtl; page-break-inside: avoid;
+  }
+  th, td { border: 1px solid #222; padding: 7px 8px; text-align: right; vertical-align: top; }
+  th { background: #f3f3f3; font-weight: bold; }
+  .imgbox {
+    margin: 16px 0; text-align: center; page-break-inside: avoid;
+  }
+  .imgbox img { max-width: 100%; height: auto; border: 1px solid #ccc; }
+  .caption { font-size: 11.5pt; text-align: center; margin: 8px 0 16px; text-indent: 0; color: #333; }
+  .note {
+    margin: 12px 0; padding: 8px 12px; border: 1px solid #777; text-indent: 0; font-size: 12pt;
+  }
+  .file-ref { text-indent: 0; font-size: 11.5pt; color: #444; margin: 8px 0 16px; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <p class="chapter">الفصل الخامس — التصميم عالي المستوى · UPPMS</p>
+    <h1>5-4 Security and Permissions Design</h1>
+  </div>
+  
+<h2>1) المصادقة</h2>
+<table>
+  <tr><th>العنصر</th><th>التنفيذ</th></tr>
+  <tr><td>الآلية</td><td>Laravel Sanctum — Personal Access Tokens</td></tr>
+  <tr><td>التخزين</td><td>localStorage + Authorization: Bearer</td></tr>
+  <tr><td>Logout</td><td>حذف التوكن الحالي</td></tr>
+  <tr><td>ملاحظة</td><td>ليست JWT؛ الجدول personal_access_tokens</td></tr>
+</table>
+
+<h2>2) الأدوار</h2>
+<table>
+  <tr><th>الدور</th><th>الاسم</th><th>الصلاحية</th></tr>
+  <tr><td>Student</td><td>student</td><td>مقترحات، مشاريع، مهام، تقدّم</td></tr>
+  <tr><td>Supervisor</td><td>supervisor</td><td>مراجعة مقترحات، إشراف، توافر، مناقشات</td></tr>
+  <tr><td>University Admin</td><td>admin</td><td>مستخدمون، XML، مسارات، جدولة، لجان</td></tr>
+  <tr><td>Super Admin</td><td>super_admin</td><td>إدارة الجامعات والمنصة</td></tr>
+</table>
+
+<h2>3) Middleware</h2>
+<ul>
+  <li><code>auth:sanctum</code> — توكن صالح.</li>
+  <li><code>EnsureUserHasUniversity</code> — ارتباط بجامعة (إلا super_admin).</li>
+  <li><code>user.status</code> — active أو graduated فقط.</li>
+  <li><code>role:...</code> — تقييد حسب الدور.</li>
+  <li><code>TenantScope</code> — عزل بيانات الجامعة.</li>
+</ul>
+
+<h2>4) التسجيل والاعتماد</h2>
+<ol>
+  <li>استيراد XML للمستخدمين المصرّح لهم.</li>
+  <li>تطابق XML → active، وإلا pending.</li>
+  <li>المدير يوافق أو يرفض.</li>
+  <li>pending/rejected لا يدخلان الـ API المحمي.</li>
+</ol>
+
+<h2>5) Multi-Tenancy</h2>
+<p>
+السجلات تحمل university_id. BelongsToUniversity + TenantScope يمنعان رؤية بيانات جامعة أخرى.
+super_admin يتجاوز النطاق لإدارة المنصة.
+</p>
+
+</body>
+</html>

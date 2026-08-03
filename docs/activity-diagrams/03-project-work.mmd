@@ -1,0 +1,10 @@
+flowchart TD
+  Start([Start]) --> Open[Open existing project]
+  Open --> Tasks[Manage tasks and comments]
+  Tasks --> Invite[Invite team members]
+  Invite --> Breakdown[Optional AI task breakdown]
+  Breakdown --> Ready[Project ready for defense stage]
+  Ready --> End([End])
+
+  style Start fill:#E8F5E9,stroke:#2E7D32
+  style End fill:#E8F5E9,stroke:#2E7D32

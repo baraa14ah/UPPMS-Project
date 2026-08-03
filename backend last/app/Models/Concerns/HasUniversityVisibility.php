@@ -39,6 +39,38 @@ trait HasUniversityVisibility
         return $this->role?->name === 'supervisor';
     }
 
+    /**
+     * University IDs this user may see under TenantScope.
+     * Supervisors: all active memberships (+ primary university_id).
+     * Others: primary university_id only.
+     *
+     * @return array<int>
+     */
+    public function tenantUniversityIds(): array
+    {
+        if ($this->isSuperAdmin()) {
+            return [];
+        }
+
+        if ($this->isSupervisorRole()) {
+            $this->loadMissing('supervisorUniversities');
+
+            $ids = $this->supervisorUniversities
+                ->filter(fn ($uni) => ($uni->pivot->status ?? null) === 'active')
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if ($this->university_id) {
+                $ids[] = (int) $this->university_id;
+            }
+
+            return array_values(array_unique(array_filter($ids)));
+        }
+
+        return $this->university_id ? [(int) $this->university_id] : [];
+    }
+
     /** Syncs supervisor-university memberships with status and approval metadata. */
     public function syncSupervisorUniversities(array $universityIds, string $status = 'active', ?int $approvedBy = null): void
     {

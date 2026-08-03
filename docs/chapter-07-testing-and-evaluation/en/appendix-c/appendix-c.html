@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>Appendix C</title>
+<style>
+  @page { size: A4; margin: 2.54cm; }
+  body {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 14pt; line-height: 1.5; color: #000; margin: 0; background: #fff;
+    text-align: justify; direction: ltr;
+  }
+  h1.chapter { font-size: 18pt; font-weight: bold; text-align: center; margin: 0 0 22px; }
+  h2 { font-size: 16pt; font-weight: bold; margin: 20px 0 10px; page-break-after: avoid; }
+  h3 { font-size: 14pt; font-weight: bold; margin: 14px 0 8px; page-break-after: avoid; }
+  p { margin: 0 0 10px; text-indent: 1.2em; }
+  p.ni { text-indent: 0; }
+  ul, ol { margin: 6px 0 12px; padding-left: 1.5em; }
+  li { margin: 4px 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 6px 0 14px;
+    font-size: 11pt; page-break-inside: avoid;
+  }
+  th, td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f0f0f0; font-weight: bold; }
+  .tbl-cap { font-size: 14pt; font-weight: bold; text-align: center; margin: 14px 0 6px; text-indent: 0; }
+  .fig-cap { font-size: 14pt; font-weight: bold; text-align: center; margin: 6px 0 14px; text-indent: 0; }
+  .imgbox { margin: 10px 0 4px; text-align: center; page-break-inside: avoid; }
+  .imgbox img { max-width: 95%; height: auto; border: 1px solid #999; }
+  .note { margin: 12px 0; padding: 8px 12px; border: 1px solid #555; text-indent: 0; font-size: 12pt; }
+  .page-break { page-break-before: always; }
+</style></head><body>
+<h1 class="chapter">Appendix C — Test Plan Template (UPPMS)</h1>
+<p class="ni">This appendix follows the guide’s Appendix C model, adapted to UPPMS.</p>
+<h2>C-1 Test Scope</h2>
+<ul>
+  <li><strong>In scope:</strong> backend units, integration, API, isolation, scheduling performance, security.</li>
+  <li><strong>Out of full scope:</strong> exhaustive manual UI and all-browser compatibility.</li>
+</ul>
+<h2>C-2 Test Strategy</h2>
+<p class="tbl-cap">Table C-1. Test Strategy</p><table><tr><th>Test Type</th><th>Objective</th><th>Tool</th></tr><tr><td>Unit</td><td>Each function/unit separately</td><td>PHPUnit Unit</td></tr><tr><td>Integration</td><td>Units with DB</td><td>PHPUnit + Transactions</td></tr><tr><td>System</td><td>Full API flows</td><td>PHPUnit Feature</td></tr><tr><td>Performance</td><td>GA under denser data</td><td>GeneticScheduler + Demo</td></tr><tr><td>Security</td><td>Isolation, RBAC, XML</td><td>Feature + Middleware</td></tr></table>
+<h2>C-3 Test Environment</h2>
+<p class="tbl-cap">Table C-2. Test Environment</p><table><tr><th>Item</th><th>Specification</th></tr><tr><td>OS</td><td>Windows 10/11</td></tr><tr><td>Server</td><td>localhost — Laravel</td></tr><tr><td>Database</td><td>MySQL (test)</td></tr><tr><td>UI</td><td>React SPA (Vite)</td></tr><tr><td>Browsers</td><td>Chrome / Edge</td></tr></table>
+<h2>C-4 Test Cases (Sample)</h2>
+<p class="tbl-cap">Table C-3. Sample Test Cases</p><table><tr><th>ID</th><th>Description</th><th>Inputs</th><th>Expected</th><th>Result</th></tr><tr><td>TC-01</td><td>Matching student registration</td><td>Valid XML email+number</td><td>active</td><td>Done</td></tr><tr><td>TC-02</td><td>Non-matching student registration</td><td>Unknown credentials</td><td>Reject</td><td>Done</td></tr><tr><td>TC-03</td><td>Matching supervisor registration</td><td>Matching email</td><td>active</td><td>Done</td></tr><tr><td>TC-04</td><td>Submit proposal</td><td>Title+description+supervisor</td><td>pending</td><td>Done</td></tr><tr><td>TC-05</td><td>Approve proposal</td><td>Supervisor approve</td><td>Project created</td><td>Done</td></tr><tr><td>TC-06</td><td>Block stage skip</td><td>Later stage without prior pass</td><td>Reject/lock</td><td>Done</td></tr><tr><td>TC-07</td><td>Generate schedule</td><td>Projects+availability+rooms</td><td>Candidates</td><td>Done</td></tr><tr><td>TC-08</td><td>Committee conflict</td><td>Supervisor on own committee</td><td>Reject</td><td>Done</td></tr></table>
+</body></html>
