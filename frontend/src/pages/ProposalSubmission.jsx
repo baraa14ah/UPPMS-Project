@@ -142,29 +142,41 @@ function ProposalStatusPanel({
 
   if (pendingProposal) {
     return (
-      <Stack direction="row" spacing={1.5} alignItems="flex-start">
-        <StatusIcon color="#F59E0B" icon={<HourglassTopRoundedIcon />} />
-        <Box sx={{ flex: 1 }}>
-          <Typography sx={{ fontWeight: 900 }}>
-            {t("proposals.statusPendingTitle")}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {t("proposals.statusPendingBody")}
-          </Typography>
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ mt: 1.25 }}
-            flexWrap="wrap"
-            useFlexGap
-          >
-            <Typography variant="body2" sx={{ fontWeight: 800 }}>
-              {pendingProposal.title}
+      <Stack spacing={1.5}>
+        <Stack direction="row" spacing={1.5} alignItems="flex-start">
+          <StatusIcon color="#F59E0B" icon={<HourglassTopRoundedIcon />} />
+          <Box sx={{ flex: 1 }}>
+            <Typography sx={{ fontWeight: 900 }}>
+              {t("proposals.statusPendingTitle")}
             </Typography>
-            <ProposalStatusBadge status="pending" />
-          </Stack>
-        </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {t("proposals.statusPendingBody")}
+            </Typography>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ mt: 1.25 }}
+              flexWrap="wrap"
+              useFlexGap
+            >
+              <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                {pendingProposal.title}
+              </Typography>
+              <ProposalStatusBadge status="pending" />
+            </Stack>
+          </Box>
+        </Stack>
+        {!atProposalLimit && (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={onNewProposal}
+            sx={{ fontWeight: 800, borderRadius: 2, alignSelf: "flex-start" }}
+          >
+            {t("proposals.startNewProposal")}
+          </Button>
+        )}
       </Stack>
     );
   }
@@ -498,7 +510,7 @@ function ProposalFormDialog({
 
 /** Student page for submitting and resubmitting project proposals. */
 export default function ProposalSubmission() {
-  const { apiFetch, authHeaders, API_BASE_URL } = useAuth();
+  const { apiFetch, authHeaders, API_BASE_URL, refreshProfile } = useAuth();
   const { t, lang } = useLanguage();
   const dateLocale = lang === "ar" ? "ar-EG" : "en-US";
   const location = useLocation();
@@ -541,7 +553,7 @@ export default function ProposalSubmission() {
   const hasActiveProject = Boolean(activeProject?.id);
   const ideasPercent = Math.round((activeProposalsCount / MAX_PROPOSALS) * 100);
   const canShowAddButton =
-    !hasActiveProject && !pendingProposal && !atProposalLimit;
+    !hasActiveProject && !atProposalLimit;
   const formOpen = formMode !== null;
 
   const loadSupervisors = useCallback(async () => {
@@ -599,10 +611,10 @@ export default function ProposalSubmission() {
   }, [loadPage]);
 
   useEffect(() => {
-    if (hasActiveProject || pendingProposal) {
+    if (hasActiveProject) {
       closeForm();
     }
-  }, [hasActiveProject, pendingProposal, closeForm]);
+  }, [hasActiveProject, closeForm]);
 
   const formatSupervisorLabel = useCallback(
     (supervisor) => {
@@ -649,7 +661,7 @@ export default function ProposalSubmission() {
   };
 
   const startNewProposal = (prefill = null) => {
-    if (hasActiveProject || pendingProposal || atProposalLimit) return;
+    if (hasActiveProject || atProposalLimit) return;
     setFormMode("new");
     setEditingProposal(null);
     setTitle(String(prefill?.title || "").slice(0, 200));
@@ -671,13 +683,11 @@ export default function ProposalSubmission() {
     prefillHandled.current = true;
     navigate(location.pathname, { replace: true, state: {} });
 
-    if (hasActiveProject || pendingProposal || atProposalLimit) {
+    if (hasActiveProject || atProposalLimit) {
       toast.error(
         hasActiveProject
           ? t("proposals.statusActiveProjectTitle")
-          : pendingProposal
-            ? t("proposals.statusPendingTitle")
-              : t("proposals.maxProposalsReached", { max: MAX_PROPOSALS }),
+          : t("proposals.maxProposalsReached", { max: MAX_PROPOSALS }),
       );
       return;
     }
@@ -685,7 +695,7 @@ export default function ProposalSubmission() {
     startNewProposal(prefill);
     toast.success(t("ideation.adoptPrefillReady"));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- open once from ideation navigation
-  }, [loading, location.state, hasActiveProject, pendingProposal, atProposalLimit]);
+  }, [loading, location.state, hasActiveProject, atProposalLimit]);
 
   const requiresStage = availableTracks.length > 0;
 
@@ -694,7 +704,6 @@ export default function ProposalSubmission() {
       return false;
     if (requiresStage && !selectedStageId) return false;
     if (title.length > 200 || description.length > 5000) return false;
-    if (pendingProposal) return false;
     if (formMode === "new" && atProposalLimit) return false;
     const selected = supervisors.find((s) => String(s.id) === supervisorId);
     if (selected && isSupervisorBlocked(selected)) return false;
@@ -721,7 +730,6 @@ export default function ProposalSubmission() {
     selectedStageId,
     requiresStage,
     availableTracks,
-    pendingProposal,
     supervisors,
     isSupervisorBlocked,
     formMode,
@@ -743,8 +751,10 @@ export default function ProposalSubmission() {
       toast.success(t("proposals.deleteSuccess"));
       setDeleteTarget(null);
       if (editingProposal?.id === deleteTarget.id) closeForm();
-      await loadProposals();
-    } catch {
+      await loadPage();
+      if (typeof refreshProfile === "function") {
+        await refreshProfile();
+      }    } catch {
       toast.error(t("common.serverError"));
     } finally {
       setDeleting(false);

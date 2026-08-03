@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { margin: 0; background: #fff; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+  .wrap { padding: 24px; }
+  .mermaid { background: #fff; }
+</style>
+</head><body><div class="wrap"><div class="mermaid">
+flowchart TB
+  subgraph Pyramid["هرم اختبارات UPPMS"]
+    Acc["Acceptance / User Testing<br/>سيناريوهات الحرم التجريبي SPU"]
+    Sys["System / Feature Tests<br/>Controllers + API + Multi-tenancy"]
+    Int["Integration<br/>Services + DB + XML + Scheduling"]
+    Unit["Unit Tests<br/>Fitness / GA Operators / TrackService / XmlImport"]
+  end
+
+  Acc --- Sys
+  Sys --- Int
+  Int --- Unit
+
+  style Unit fill:#C8E6C9,stroke:#2E7D32
+  style Int fill:#BBDEFB,stroke:#1565C0
+  style Sys fill:#FFE0B2,stroke:#EF6C00
+  style Acc fill:#E1BEE7,stroke:#6A1B9A
+</div></div>
+<script>mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });</script>
+</body></html>

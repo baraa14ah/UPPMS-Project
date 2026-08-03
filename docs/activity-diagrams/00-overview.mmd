@@ -1,0 +1,11 @@
+flowchart TD
+  Start([Start]) --> Auth[Register and login]
+  Auth --> Approve[Account approved]
+  Approve --> Work[Work inside university workspace]
+  Work --> Prop[Submit proposal and create project]
+  Prop --> Progress[Advance on academic track]
+  Progress --> Schedule[Schedule and run defense]
+  Schedule --> End([End])
+
+  style Start fill:#E8F5E9,stroke:#2E7D32
+  style End fill:#E8F5E9,stroke:#2E7D32

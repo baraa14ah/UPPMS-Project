@@ -30,10 +30,9 @@ class ProjectProposalService
             $this->assertTrackStageProvided($student, $data);
 
             if (!empty($data['track_stage_id'])) {
+                // Validate only — do not assign track until a proposal is approved.
                 $this->trackService->assertPrerequisitesMet($student, (int) $data['track_stage_id']);
                 $this->trackService->assertStageIsCurrentForStudent($student, (int) $data['track_stage_id']);
-                $this->trackService->autoAssignTrack($student, (int) $data['track_stage_id']);
-                $student->refresh();
             }
 
             $supervisor = $this->resolveSupervisor(
@@ -134,6 +133,15 @@ class ProjectProposalService
         }
 
         return DB::transaction(function () use ($proposal, $supervisor) {
+            $student = User::query()->findOrFail($proposal->student_id);
+
+            if ($proposal->track_stage_id) {
+                $stageId = (int) $proposal->track_stage_id;
+                $this->trackService->assertPrerequisitesMet($student, $stageId);
+                $this->trackService->assertStageIsCurrentForStudent($student, $stageId);
+                $this->trackService->autoAssignTrack($student, $stageId);
+            }
+
             $proposal->update(['status' => 'approved']);
 
             $project = Project::create([
@@ -214,8 +222,16 @@ class ProjectProposalService
             ]);
         }
 
-        DB::transaction(function () use ($proposal) {
+        DB::transaction(function () use ($proposal, $student) {
+            $trackStageId = $proposal->track_stage_id
+                ? (int) $proposal->track_stage_id
+                : null;
+
             $this->purgeProposalAndRelated($proposal);
+            $this->trackService->releaseTrackAssignmentIfProposalWithdrawn(
+                $student->fresh(),
+                $trackStageId,
+            );
         });
     }
 
@@ -245,14 +261,12 @@ class ProjectProposalService
         }
 
         return DB::transaction(function () use ($proposal, $student, $data) {
-            $this->assertNoOtherPendingProposal($student, (int) $proposal->id, lock: true);
             $this->assertTrackStageProvided($student, $data);
 
             if (!empty($data['track_stage_id'])) {
+                // Validate only — track assignment happens on approve.
                 $this->trackService->assertPrerequisitesMet($student, (int) $data['track_stage_id']);
                 $this->trackService->assertStageIsCurrentForStudent($student, (int) $data['track_stage_id']);
-                $this->trackService->autoAssignTrack($student, (int) $data['track_stage_id']);
-                $student->refresh();
             }
 
             $supervisorId = isset($data['requested_supervisor_id'])
@@ -389,7 +403,9 @@ class ProjectProposalService
             ]);
         }
 
-        $this->assertNoOtherPendingProposal($student, null, $lock);
+        $this->trackService->releaseTrackAssignmentIfProposalWithdrawn($student);
+        $student->refresh();
+
         $this->assertProposalLimitNotReached($student, $lock);
 
         $projectQuery = Project::query()
@@ -403,27 +419,6 @@ class ProjectProposalService
         if ($projectQuery->exists()) {
             throw ValidationException::withMessages([
                 'project' => ['existing_active_project'],
-            ]);
-        }
-    }
-
-    private function assertNoOtherPendingProposal(User $student, ?int $excludeProposalId, bool $lock = false): void
-    {
-        $query = ProjectProposal::query()
-            ->where('student_id', $student->id)
-            ->where('status', 'pending');
-
-        if ($excludeProposalId !== null) {
-            $query->where('id', '!=', $excludeProposalId);
-        }
-
-        if ($lock) {
-            $query->lockForUpdate();
-        }
-
-        if ($query->exists()) {
-            throw ValidationException::withMessages([
-                'proposal' => ['existing_pending_proposal'],
             ]);
         }
     }

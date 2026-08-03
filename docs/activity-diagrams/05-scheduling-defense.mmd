@@ -1,0 +1,14 @@
+flowchart TD
+  Start([Start]) --> Setup[Admin sets rooms dates and availability]
+  Setup --> Mode{Assignment mode?}
+  Mode -->|Genetic schedule| Generate[Generate schedule with GA]
+  Mode -->|Individual| Manual[Assign supervisors one by one]
+  Generate --> Review[Review and confirm sessions]
+  Manual --> Review
+  Review --> Committees[Assign defense committees]
+  Committees --> Result[Record defense result]
+  Result --> End([End])
+
+  style Start fill:#E8F5E9,stroke:#2E7D32
+  style End fill:#E8F5E9,stroke:#2E7D32
+  style Mode fill:#FFF8E1,stroke:#F9A825

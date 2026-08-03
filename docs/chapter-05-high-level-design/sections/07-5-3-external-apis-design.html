@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>5-3 — External APIs Design</title>
+  <style>
+  @page { size: A4; margin: 20mm 16mm 18mm 16mm; }
+  body {
+    font-family: "Traditional Arabic", "Times New Roman", Times, serif;
+    font-size: 13.5pt; line-height: 1.85; color: #111; margin: 0; background: #fff;
+    text-align: justify; direction: rtl;
+  }
+  .head {
+    border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 22px;
+  }
+  .head .chapter { font-size: 12pt; color: #444; margin: 0 0 6px; text-indent: 0; }
+  .head h1 { font-size: 18pt; margin: 0; font-weight: bold; text-align: right; }
+  .head .code { font-size: 11pt; color: #555; margin-top: 4px; text-indent: 0; }
+  h2 { font-size: 14pt; margin: 18px 0 10px; page-break-after: avoid; }
+  h3 { font-size: 13pt; margin: 14px 0 8px; page-break-after: avoid; }
+  p { margin: 0 0 11px; text-indent: 1.4em; }
+  p.ni { text-indent: 0; }
+  ul, ol { margin: 6px 0 14px; padding-right: 1.6em; }
+  li { margin: 3px 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 11pt;
+    direction: rtl; page-break-inside: avoid;
+  }
+  th, td { border: 1px solid #222; padding: 7px 8px; text-align: right; vertical-align: top; }
+  th { background: #f3f3f3; font-weight: bold; }
+  .imgbox {
+    margin: 16px 0; text-align: center; page-break-inside: avoid;
+  }
+  .imgbox img { max-width: 100%; height: auto; border: 1px solid #ccc; }
+  .caption { font-size: 11.5pt; text-align: center; margin: 8px 0 16px; text-indent: 0; color: #333; }
+  .note {
+    margin: 12px 0; padding: 8px 12px; border: 1px solid #777; text-indent: 0; font-size: 12pt;
+  }
+  .file-ref { text-indent: 0; font-size: 11.5pt; color: #444; margin: 8px 0 16px; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <p class="chapter">الفصل الخامس — التصميم عالي المستوى · UPPMS</p>
+    <h1>5-3 External APIs Design</h1>
+  </div>
+  
+<p>يشمل هذا القسم الواجهات الخارجية التي يستهلكها النظام، مع ملخص لمسارات REST الداخلية التي تخدم الواجهة.</p>
+
+<h2>1) Google Gemini API</h2>
+<table>
+  <tr><th>البند</th><th>التفاصيل</th></tr>
+  <tr><td>الاستخدام</td><td>اقتراح أفكار مشاريع + توليد مهام</td></tr>
+  <tr><td>Method / Path</td><td>POST …/models/{model}:generateContent</td></tr>
+  <tr><td>Auth</td><td>x-goog-api-key (GEMINI_API_KEY)</td></tr>
+  <tr><td>Model</td><td>gemini-2.5-flash</td></tr>
+  <tr><td>Services</td><td>AIIdeationService, AITaskService</td></tr>
+  <tr><td>UPPMS Routes</td><td>POST /api/ai/suggest-projects — POST /api/projects/{project}/generate-tasks</td></tr>
+  <tr><td>Errors</td><td>مفتاح غير صالح، 429، JSON غير صالح</td></tr>
+</table>
+
+<h2>2) GitHub OAuth + REST API</h2>
+<table>
+  <tr><th>البند</th><th>التفاصيل</th></tr>
+  <tr><td>الاستخدام</td><td>ربط الحساب، مزامنة commits، دفع الإصدارات</td></tr>
+  <tr><td>OAuth</td><td>GET /api/auth/github/redirect و /callback (scope: repo)</td></tr>
+  <tr><td>API</td><td>api.github.com عبر GithubService و/أو users.github_token</td></tr>
+  <tr><td>Errors</td><td>رفض التفويض، توكن منتهٍ، مستودع غير موجود</td></tr>
+</table>
+
+<h2>3) Internal REST API Groups</h2>
+<table>
+  <tr><th>المجموعة</th><th>أمثلة</th><th>Methods</th></tr>
+  <tr><td>Auth</td><td>/register, /login, /logout</td><td>POST</td></tr>
+  <tr><td>Users / XML</td><td>/users, /admin/xml-import/*</td><td>GET/POST</td></tr>
+  <tr><td>Projects / Tasks</td><td>/projects, /task/*</td><td>CRUD</td></tr>
+  <tr><td>Proposals / Tracks</td><td>/proposals, /tracks</td><td>GET/POST/PUT</td></tr>
+  <tr><td>Schedules</td><td>/schedules/generate, /approve</td><td>POST/GET</td></tr>
+  <tr><td>Committees</td><td>/committees, assign-committee</td><td>GET/POST/PUT</td></tr>
+  <tr><td>AI / Platform</td><td>/ai/*, /admin/universities</td><td>POST/GET</td></tr>
+</table>
+<p class="ni">Auth: Bearer Sanctum. Codes: 200/201, 401, 403, 404, 422, 429.</p>
+<div class="note">تفاصيل إضافية: <code>schemas/external-and-internal-apis.md</code></div>
+
+</body>
+</html>

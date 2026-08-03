@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>5-2-3 — Constraints and Keys</title>
+  <style>
+  @page { size: A4; margin: 20mm 16mm 18mm 16mm; }
+  body {
+    font-family: "Traditional Arabic", "Times New Roman", Times, serif;
+    font-size: 13.5pt; line-height: 1.85; color: #111; margin: 0; background: #fff;
+    text-align: justify; direction: rtl;
+  }
+  .head {
+    border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 22px;
+  }
+  .head .chapter { font-size: 12pt; color: #444; margin: 0 0 6px; text-indent: 0; }
+  .head h1 { font-size: 18pt; margin: 0; font-weight: bold; text-align: right; }
+  .head .code { font-size: 11pt; color: #555; margin-top: 4px; text-indent: 0; }
+  h2 { font-size: 14pt; margin: 18px 0 10px; page-break-after: avoid; }
+  h3 { font-size: 13pt; margin: 14px 0 8px; page-break-after: avoid; }
+  p { margin: 0 0 11px; text-indent: 1.4em; }
+  p.ni { text-indent: 0; }
+  ul, ol { margin: 6px 0 14px; padding-right: 1.6em; }
+  li { margin: 3px 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 11pt;
+    direction: rtl; page-break-inside: avoid;
+  }
+  th, td { border: 1px solid #222; padding: 7px 8px; text-align: right; vertical-align: top; }
+  th { background: #f3f3f3; font-weight: bold; }
+  .imgbox {
+    margin: 16px 0; text-align: center; page-break-inside: avoid;
+  }
+  .imgbox img { max-width: 100%; height: auto; border: 1px solid #ccc; }
+  .caption { font-size: 11.5pt; text-align: center; margin: 8px 0 16px; text-indent: 0; color: #333; }
+  .note {
+    margin: 12px 0; padding: 8px 12px; border: 1px solid #777; text-indent: 0; font-size: 12pt;
+  }
+  .file-ref { text-indent: 0; font-size: 11.5pt; color: #444; margin: 8px 0 16px; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <p class="chapter">الفصل الخامس — التصميم عالي المستوى · UPPMS</p>
+    <h1>5-2-3 Constraints and Keys</h1>
+  </div>
+  
+<h2>Primary Keys</h2>
+<p>كل الجداول التشغيلية تستخدم <code>id</code> كمفتاح أساسي.</p>
+
+<h2>Foreign Keys (أهم الروابط)</h2>
+<ul>
+  <li>users → roles / universities / tracks</li>
+  <li>projects → universities / users / project_proposals</li>
+  <li>project_proposals → users / track_stages</li>
+  <li>track_stages → tracks / academic_stages_config / self(parent_id)</li>
+  <li>student_progress → users / tracks / track_stages</li>
+  <li>defense_sessions → approved_schedules / projects / rooms / committees</li>
+  <li>committee_assignments → defense_sessions / users</li>
+  <li>xml_authorized_users → universities / users</li>
+</ul>
+
+<h2>Unique Constraints</h2>
+<ul>
+  <li>users.email</li>
+  <li>(university_id, student_number) على users</li>
+  <li>(university_id, name) على tracks و committees</li>
+  <li>(student_id, track_id, track_stage_id) على student_progress</li>
+  <li>(university_id, university_number, email, user_type) على xml_authorized_users</li>
+</ul>
+
+<h2>Status / Enum Values</h2>
+<table>
+  <tr><th>الكيان</th><th>الحقل</th><th>القيم</th></tr>
+  <tr><td>users</td><td>status</td><td>pending, active, rejected, graduated</td></tr>
+  <tr><td>project_proposals</td><td>status</td><td>pending, approved, rejected</td></tr>
+  <tr><td>tasks</td><td>status</td><td>pending, in_progress, completed</td></tr>
+  <tr><td>student_progress</td><td>status</td><td>in_progress, passed, failed, incomplete</td></tr>
+  <tr><td>approved_schedules</td><td>status</td><td>active, voided</td></tr>
+  <tr><td>defense_sessions</td><td>status</td><td>scheduled, completed, cancelled</td></tr>
+</table>
+
+<h2>قواعد أعمال</h2>
+<ul>
+  <li>لا أكثر من مقترح pending نشط لنفس الطالب.</li>
+  <li>عزل المستأجر عبر university_id + TenantScope.</li>
+  <li>مطابقة XML عند التسجيل تفعّل الحساب.</li>
+  <li>جدول معتمد نشط واحد لكل مرحلة أكاديمية.</li>
+  <li>لا SoftDeletes؛ تُستخدم حالات voided / cancelled / is_active.</li>
+</ul>
+<div class="note">تفاصيل إضافية: <code>schemas/constraints-and-keys.md</code></div>
+
+</body>
+</html>

@@ -1,0 +1,18 @@
+flowchart TD
+  Start([Start]) --> Track[Student assigned to academic track]
+  Track --> Current[Work on current stage project]
+  Current --> Defense[Attend defense]
+  Defense --> Result{Pass?}
+  Result -->|No| Retry[Stay or retry according to rules]
+  Result -->|Yes| Next[Move to next stage or phase]
+  Next --> More{Track finished?}
+  More -->|No| Current
+  More -->|Yes| Done[Graduation / track complete]
+  Retry --> End1([End])
+  Done --> End2([End])
+
+  style Start fill:#E8F5E9,stroke:#2E7D32
+  style End1 fill:#FFEBEE,stroke:#C62828
+  style End2 fill:#E8F5E9,stroke:#2E7D32
+  style Result fill:#FFF8E1,stroke:#F9A825
+  style More fill:#FFF8E1,stroke:#F9A825

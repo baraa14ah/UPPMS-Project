@@ -60,6 +60,10 @@ class XmlAuthorizedUser extends Model
 
     /**
      * Locks an available record for registration (call inside a DB transaction).
+     *
+     * Matching rules (university XML):
+     * - student: email + university_number must both match
+     * - supervisor: email only
      */
     public static function lockAvailableForRegistration(
         int $universityId,
@@ -73,6 +77,8 @@ class XmlAuthorizedUser extends Model
             ->where('user_type', $userType)
             ->where('is_used', false);
 
+        // Students must match email AND university number from the XML file.
+        // Supervisors match by email only (university_number is ignored).
         if ($userType === 'student') {
             $query->where('university_number', trim((string) $universityNumber));
         }

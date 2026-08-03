@@ -1,0 +1,20 @@
+sequenceDiagram
+  autonumber
+  actor Supervisor
+  participant TrackC as TrackController
+  participant TrackS as TrackService
+  actor Student
+  participant SchedC as ScheduleController
+
+  Supervisor->>TrackC: open student progress
+  TrackC->>TrackS: getProgressTimeline()
+  TrackS-->>TrackC: stages and status
+  TrackC-->>Supervisor: show timeline
+
+  Note over Student,SchedC: After defense session
+  Student->>SchedC: defense completed
+  SchedC->>TrackS: applyDefenseProgress()
+  TrackS->>TrackS: update current stage
+  TrackS-->>SchedC: progress saved
+  SchedC-->>Supervisor: progress updated
+  SchedC-->>Student: next stage or completed
