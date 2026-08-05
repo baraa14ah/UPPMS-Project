@@ -5,16 +5,15 @@ namespace App\Providers;
 use App\Scheduling\EvolutionaryOperators;
 use App\Scheduling\FitnessCalculator;
 use App\Scheduling\PopulationManager;
-use App\Services\GeneticSchedulerService;
-use App\Services\NotificationService;
-use App\Services\ScheduleApprovalService;
-use App\Services\CommitteeService;
-use App\Services\TrackService;
+use App\Services\Scheduling\GeneticSchedulerService;
+use App\Services\Notifications\NotificationService;
+use App\Services\Scheduling\ScheduleApprovalService;
+use App\Services\Committees\CommitteeService;
+use App\Services\Tracks\TrackService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /** Register application services in the container. */
     public function register(): void
     {
         $this->app->singleton(FitnessCalculator::class, function () {

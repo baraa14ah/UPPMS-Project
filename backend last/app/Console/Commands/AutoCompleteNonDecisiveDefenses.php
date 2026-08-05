@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\TrackService;
+use App\Services\Tracks\TrackService;
 use Illuminate\Console\Command;
 
 class AutoCompleteNonDecisiveDefenses extends Command

@@ -4,7 +4,7 @@ use App\Models\AcademicStageConfig;
 use App\Models\Committee;
 use App\Models\Project;
 use App\Models\University;
-use App\Services\TrackService;
+use App\Services\Tracks\TrackService;
 use Illuminate\Contracts\Console\Kernel;
 
 require __DIR__ . '/../vendor/autoload.php';

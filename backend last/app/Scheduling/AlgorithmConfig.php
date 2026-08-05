@@ -19,7 +19,7 @@ class AlgorithmConfig
         float $mutationRate = 0.10,
         float $elitismRate = 0.05,
         int $tournamentSize = 3,
-        float $maxTimeSeconds = 30.0,
+        float $maxTimeSeconds = 60.0,
         int $minRestMinutes = 30,
         bool $useCommittees = false
     ) {
@@ -33,7 +33,6 @@ class AlgorithmConfig
         $this->useCommittees = $useCommittees;
     }
 
-    /** Get number of elite chromosomes to preserve each generation. */
     public function getEliteCount(): int
     {
         return (int) ceil($this->populationSize * $this->elitismRate);

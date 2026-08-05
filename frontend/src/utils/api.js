@@ -3,12 +3,11 @@ export const API_BASE_URL =
 
 let sessionBlockHandler = null;
 
-/** Registers a callback when the API returns a blocked-session 403. */
 export function registerStatusBlockedHandler(handler) {
   sessionBlockHandler = handler;
 }
 
-/** Notifies AuthContext when a response indicates pending, rejected, or no university. */
+/** Maps 403 responses (pending/rejected/no_university) into AuthContext. */
 function applySessionBlockFromResponse(res, data) {
   if (res.status !== 403 || !data || !sessionBlockHandler) return;
 
@@ -29,7 +28,7 @@ function applySessionBlockFromResponse(res, data) {
   }
 }
 
-/** JSON fetch wrapper; returns `{ res, data }` and handles session blocks. */
+/** Fetch JSON and surface session-block 403s. Returns `{ res, data }`. */
 export async function apiFetch(url, options = {}) {
   const res = await fetch(url, options);
   let data = null;

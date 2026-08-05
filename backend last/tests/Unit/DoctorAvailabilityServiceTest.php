@@ -6,7 +6,7 @@ use App\Models\DoctorAvailability;
 use App\Models\Role;
 use App\Models\University;
 use App\Models\User;
-use App\Services\DoctorAvailabilityService;
+use App\Services\Scheduling\DoctorAvailabilityService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 

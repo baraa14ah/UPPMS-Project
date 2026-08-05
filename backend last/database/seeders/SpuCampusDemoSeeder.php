@@ -14,7 +14,7 @@ use App\Models\Track;
 use App\Models\TrackStage;
 use App\Models\University;
 use App\Models\User;
-use App\Services\UniversitySchedulingBootstrapService;
+use App\Services\Scheduling\UniversitySchedulingBootstrapService;
 use App\Support\TrackStageHierarchy;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
@@ -86,6 +86,18 @@ class SpuCampusDemoSeeder extends Seeder
         'مشروع فصلي',
         'تخرج 1',
         'تخرج 2',
+        'تخرج 3',
+    ];
+
+    /**
+     * Demo mix: projects distributed across these stations (first step of each).
+     * تخرج 2 remains in the track path but is not used in the mixed demo set.
+     */
+    private const MIX_PHASES = [
+        'تطبيقات',
+        'مشروع فصلي',
+        'تخرج 1',
+        'تخرج 3',
     ];
 
     /** Step display names (index into shared AcademicStageConfig list). */
@@ -113,10 +125,11 @@ class SpuCampusDemoSeeder extends Seeder
             $student->update(['track_id' => $track->id]);
         }
 
-        $this->seedStudentProgress($students, $track, $steps, $supervisors[0]);
+        $assignments = $this->buildStudentPhaseAssignments($students, $track);
+        $this->seedStudentProgress($students, $track, $steps, $supervisors[0], $assignments);
         $committees = $this->seedCommittees($university->id, $supervisors, $defenseTypes);
         $rooms = $this->seedRooms($university->id);
-        $projects = $this->seedProjectsAndProposals($university, $students, $supervisors, $steps);
+        $projects = $this->seedProjectsAndProposals($university, $students, $supervisors, $assignments);
         $this->seedDoctorAvailabilities($university->id, $supervisors, $defenseTypes);
 
         $this->printSummary(
@@ -411,22 +424,64 @@ class SpuCampusDemoSeeder extends Seeder
     }
 
     /**
-     * All students currently at the last sub-track's final defense step
-     * (تخرج 2 · مناقشة نهائية) so projects share one phase for scheduling demos.
+     * Map each student to the first step of a mixed academic station.
      *
      * @param User[] $students
-     * @param TrackStage[] $steps  flat list of actionable steps
+     * @return array<int, TrackStage> student_id => first step of assigned phase
      */
-    private function seedStudentProgress(array $students, Track $track, array $steps, User $recorder): void
+    private function buildStudentPhaseAssignments(array $students, Track $track): array
     {
+        $firstStepByPhase = [];
+        foreach (TrackStageHierarchy::groupedPhases($track) as $group) {
+            $phase = $group['phase'];
+            $first = $group['steps']->first();
+            if ($phase && $first) {
+                $first->setRelation('parent', $phase);
+                $firstStepByPhase[$phase->name] = $first;
+            }
+        }
+
+        $assignments = [];
+        foreach ($students as $offset => $student) {
+            $phaseName = self::MIX_PHASES[$offset % count(self::MIX_PHASES)];
+            $step = $firstStepByPhase[$phaseName] ?? null;
+            if (!$step) {
+                throw new \RuntimeException("Missing first step for phase: {$phaseName}");
+            }
+            $assignments[$student->id] = $step;
+        }
+
+        return $assignments;
+    }
+
+    /**
+     * Each student is in_progress on their assigned first step; prior steps are passed.
+     *
+     * @param User[] $students
+     * @param TrackStage[] $steps
+     * @param array<int, TrackStage> $assignments
+     */
+    private function seedStudentProgress(
+        array $students,
+        Track $track,
+        array $steps,
+        User $recorder,
+        array $assignments,
+    ): void {
         $totalSteps = count($steps);
         if ($totalSteps === 0) {
             return;
         }
 
-        $current = $totalSteps - 1; // last step of last phase = مناقشة نهائية
+        $indexById = [];
+        foreach ($steps as $i => $step) {
+            $indexById[$step->id] = $i;
+        }
 
         foreach ($students as $student) {
+            $currentStep = $assignments[$student->id] ?? $steps[0];
+            $current = $indexById[$currentStep->id] ?? 0;
+
             for ($s = 0; $s < $current; $s++) {
                 StudentProgress::updateOrCreate(
                     [
@@ -457,7 +512,6 @@ class SpuCampusDemoSeeder extends Seeder
                 ],
             );
 
-            // Drop stale progress rows if this seeder previously used other steps.
             StudentProgress::query()
                 ->where('student_id', $student->id)
                 ->where('track_id', $track->id)
@@ -563,26 +617,40 @@ class SpuCampusDemoSeeder extends Seeder
     }
 
     /**
-     * Projects + approved proposals — all on last sub-track final-defense step.
+     * Projects + approved proposals — mixed across تطبيقات / مشروع فصلي / تخرج 1 / تخرج 3
+     * (each on the first step of its station).
      *
      * @param User[] $students
      * @param User[] $supervisors
-     * @param TrackStage[] $steps
+     * @param array<int, TrackStage> $assignments
      * @return Project[]
      */
     private function seedProjectsAndProposals(
         University $university,
         array $students,
         array $supervisors,
-        array $steps,
+        array $assignments,
     ): array {
-        $finalStepId = $steps !== [] ? $steps[array_key_last($steps)]->id : null;
+        $studentIds = collect($students)->pluck('id')->all();
+
+        // Replace prior campus demo projects/proposals so mixed phases do not leave orphans.
+        Project::query()
+            ->where('university_id', $university->id)
+            ->whereIn('user_id', $studentIds)
+            ->delete();
+        ProjectProposal::query()
+            ->where('university_id', $university->id)
+            ->whereIn('student_id', $studentIds)
+            ->delete();
+
         $projects = [];
 
         foreach ($students as $offset => $student) {
             $supervisor = $supervisors[$offset % count($supervisors)];
             $topic = self::PROJECT_TOPICS[$offset % count(self::PROJECT_TOPICS)];
-            $title = "{$topic} — {$student->student_number}";
+            $step = $assignments[$student->id];
+            $phaseName = $step->parent?->name ?? $step->name;
+            $title = "{$topic} — {$phaseName} — {$student->student_number}";
 
             $proposal = ProjectProposal::updateOrCreate(
                 [
@@ -592,9 +660,9 @@ class SpuCampusDemoSeeder extends Seeder
                 [
                     'university_id' => $university->id,
                     'requested_supervisor_id' => $supervisor->id,
-                    'description' => "مقترح معتمد لمشروع تجريبي في مسار هندسة الحاسوب — {$topic}.",
+                    'description' => "مقترح معتمد في محطة {$phaseName} (أول خطوة: {$step->name}) — {$topic}.",
                     'status' => 'approved',
-                    'track_stage_id' => $finalStepId,
+                    'track_stage_id' => $step->id,
                 ],
             );
 
@@ -602,10 +670,11 @@ class SpuCampusDemoSeeder extends Seeder
                 ['proposal_id' => $proposal->id],
                 [
                     'title' => $title,
-                    'description' => "مشروع نشط تحت إشراف {$supervisor->name}.",
+                    'description' => "مشروع نشط في محطة {$phaseName} تحت إشراف {$supervisor->name}.",
                     'user_id' => $student->id,
                     'supervisor_id' => $supervisor->id,
                     'university_id' => $university->id,
+                    'track_stage_id' => $step->id,
                     'status' => 'in_progress',
                 ],
             );
@@ -705,7 +774,9 @@ class SpuCampusDemoSeeder extends Seeder
         $this->command?->info('══════════════════════════════════════════════════════════════════');
         $this->command?->newLine();
         $this->command?->info("University: {$university->name} (slug: {$university->slug}, id: {$university->id})");
-        $this->command?->info("Track:      {$track->name} (id: {$track->id}) — 4 phases × 4 steps = ".count($steps).' actionable');
+        $phaseCount = $track->stages->whereNull('parent_id')->count() ?: count(self::PHASES);
+        $stepPerPhase = count(self::STEP_NAMES);
+        $this->command?->info("Track:      {$track->name} (id: {$track->id}) — {$phaseCount} phases × {$stepPerPhase} steps = ".count($steps).' actionable');
         $this->command?->info('Defense:    '.implode(' | ', array_map(fn ($s) => $s->name, $defenseTypes)));
         $this->command?->info('Users:      1 admin, '.count($supervisors).' supervisors, '.count($students).' students');
         $this->command?->info('Progress:   '.$passed.' passed, '.$inProgress.' in_progress');

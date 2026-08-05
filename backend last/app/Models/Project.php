@@ -20,6 +20,7 @@ class Project extends Model
         'supervisor_id',
         'university_id',
         'proposal_id',
+        'track_stage_id',
     ];
 
     /** Returns comments posted on this project. */
@@ -50,6 +51,12 @@ class Project extends Model
     public function proposal()
     {
         return $this->belongsTo(ProjectProposal::class, 'proposal_id');
+    }
+
+    /** Returns the academic track step linked to this project, if any. */
+    public function trackStage()
+    {
+        return $this->belongsTo(TrackStage::class, 'track_stage_id');
     }
 
     /** Returns git commits linked to this project. */

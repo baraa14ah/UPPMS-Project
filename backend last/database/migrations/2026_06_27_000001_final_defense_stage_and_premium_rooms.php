@@ -2,7 +2,7 @@
 
 use App\Models\AcademicStageConfig;
 use App\Models\University;
-use App\Services\UniversitySchedulingBootstrapService;
+use App\Services\Scheduling\UniversitySchedulingBootstrapService;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;

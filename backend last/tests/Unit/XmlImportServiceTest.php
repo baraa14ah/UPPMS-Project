@@ -7,7 +7,7 @@ use App\Models\University;
 use App\Models\User;
 use App\Models\XmlAuthorizedUser;
 use App\Models\XmlImportLog;
-use App\Services\XmlImportService;
+use App\Services\Users\XmlImportService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
