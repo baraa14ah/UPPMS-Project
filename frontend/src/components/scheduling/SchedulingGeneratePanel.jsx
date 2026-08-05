@@ -24,8 +24,8 @@ import {
 import SchedulingSection from "./SchedulingSection";
 import ScheduleCandidateCard, {
   ScheduleCandidatePicker,
-} from "../ScheduleCandidateCard";
-import ButtonSpinner from "../ButtonSpinner";
+} from "./ScheduleCandidateCard";
+import ButtonSpinner from "../shared/ButtonSpinner";
 import { isMandatoryStage } from "../../utils/schedulingFormUtils";
 import { useLanguage } from "../../context/LanguageContext";
 

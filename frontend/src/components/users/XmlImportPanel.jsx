@@ -25,7 +25,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
-import XmlUploadDropzone from "../XmlUploadDropzone";
+import XmlUploadDropzone from "./XmlUploadDropzone";
 
 function rateColor(rate) {
   if (rate > 70) return "success";

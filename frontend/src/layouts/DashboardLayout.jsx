@@ -11,13 +11,13 @@ import { useAuth } from "../context/AuthContext";
 import { useThemeMode } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import { textEllipsisSx } from "../styles/textEllipsis";
-import SystemBreadcrumbs from "../components/SystemBreadcrumbs";
-import NotificationBellMenu from "../components/NotificationBellMenu";
+import SystemBreadcrumbs from "../components/shared/SystemBreadcrumbs";
+import NotificationBellMenu from "../components/notifications/NotificationBellMenu";
 import RouteLoadingFallback from "../components/loading/RouteLoadingFallback";
 import NavigationProgress from "../components/loading/NavigationProgress";
 import ContentFadeIn from "../components/loading/ContentFadeIn";
-import BrandLogo from "../components/BrandLogo";
-import LanguageSwitcher from "../components/LanguageSwitcher";
+import BrandLogo from "../components/shared/BrandLogo";
+import LanguageSwitcher from "../components/shared/LanguageSwitcher";
 import {
   getNavForRole,
   groupNavBySection,

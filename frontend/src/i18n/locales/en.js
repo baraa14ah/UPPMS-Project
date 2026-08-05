@@ -572,6 +572,10 @@ export default {
       "Describe the idea, goals, and expected technologies...",
     titleLabel: "Project title",
     descLabel: "Project description",
+    trackPhaseLabel: "Academic station",
+    trackPhaseOptionalHint:
+      "Optional. Choose a main station only — the project is placed on the first step of that station. Leave empty for the first station.",
+    trackPhaseDefaultOption: "First academic station (default)",
     createBtn: "Create project",
     statsTotal: "Total projects",
     statsPending: "Pending",
@@ -1022,6 +1026,7 @@ export default {
     proposal: "Proposal",
     system: "System",
     committee: "Committee",
+    track: "Academic track",
   },
   notificationMessages: {
     task: {
@@ -1097,14 +1102,53 @@ export default {
       },
       reassigned: {
         title: "Proposal reassigned",
-        body: 'Your proposal "{title}" was reassigned to another supervisor.',
+        body: 'Your proposal "{title}" was reassigned to {supervisor}.',
+      },
+      assignedToYou: {
+        title: "Proposal assigned to you",
+        body: 'Proposal "{title}" has been assigned to you for review.',
       },
     },
-    committee_member_added: "You have been added to committee {{committee}}",
-    committee_member_removed:
-      "You have been removed from committee {{committee}}",
-    committee_role_changed:
-      "Your role in committee {{committee}} has been updated to {{role}}",
+    committee: {
+      memberAdded: {
+        title: "Added to committee",
+        body: 'You have been added to committee "{committee}" as {role}.',
+      },
+      memberRemoved: {
+        title: "Removed from committee",
+        body: 'You have been removed from committee "{committee}".',
+      },
+      roleChanged: {
+        title: "Committee role updated",
+        body: 'Your role in committee "{committee}" has been updated to {role}.',
+      },
+    },
+    track: {
+      prerequisiteOverride: {
+        title: "Prerequisite override",
+        body: "An administrator completed «{stage}» for you via override: {reason}",
+      },
+      completed: {
+        title: "Congratulations — Graduate",
+        body: "You completed «{stage}» and finished your academic track. You are now a graduate.",
+      },
+      phaseCompleted: {
+        title: "Sub-track completed",
+        body: "You completed this sub-track («{phase}»). Submit a new project proposal for «{next}».",
+      },
+      defenseResult: {
+        title: "Defense result recorded",
+        body: "Your defense for «{stage}» was recorded as {result}.{next}",
+        next: " You moved to «{next}».",
+      },
+      stageCompleted: {
+        title: "Academic stage completed",
+        body: "Your academic stage «{stage}» has been marked complete.",
+      },
+      resultPassed: "passed",
+      resultFailed: "failed",
+      resultIncomplete: "incomplete",
+    },
   },
   github: {
     linkNow: "Link GitHub now",
@@ -1907,7 +1951,17 @@ export default {
       "Moves the student directly to a chosen stage, skipping locked prerequisites — the reason is stored in the audit log.",
     overrideAudit: "Overrides are logged in the audit history.",
     selectStudent: "Select student",
+    selectStudentFirst: "Select a student first",
+    selectPhaseFirst: "Select a phase first, then a step",
+    searchStudentOverride: "Search by name, university number, or email...",
+    noRemainingStages: "No steps available for override — this student finished all listed phases",
     targetStage: "Target stage",
+    targetPhase: "Phase (current and later)",
+    targetStep: "Step inside the phase",
+    overridePhaseHint:
+      "Only current/later phases and incomplete steps. Override completes the chosen step and advances the student.",
+    overrideStepHint: "Pick a step to complete via override — it becomes done and progress moves.",
+    stepCompleted: "done",
     overrideReason: "Reason (min 10 characters)",
     overrideReasonMin: "Override reason must be at least 10 characters",
     overrideConfirm: "Apply Override",

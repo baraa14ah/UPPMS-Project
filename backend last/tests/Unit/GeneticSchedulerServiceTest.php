@@ -10,7 +10,7 @@ use App\Models\Role;
 use App\Models\University;
 use App\Models\User;
 use App\Scheduling\AlgorithmConfig;
-use App\Services\GeneticSchedulerService;
+use App\Services\Scheduling\GeneticSchedulerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;

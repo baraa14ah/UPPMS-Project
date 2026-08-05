@@ -16,7 +16,7 @@ use App\Models\Track;
 use App\Models\TrackStage;
 use App\Models\University;
 use App\Models\User;
-use App\Services\UniversitySchedulingBootstrapService;
+use App\Services\Scheduling\UniversitySchedulingBootstrapService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;

@@ -4,7 +4,6 @@ import { WORKFLOW_STEPS } from "../../utils/schedulingFormUtils";
 import { sectionPaperSx } from "../../styles/dashboardUi";
 import { useLanguage } from "../../context/LanguageContext";
 
-/** Internal scheduling steps — types → rooms → generate. */
 export default function SchedulingWorkflowStepper({ activeStep, onStepChange }) {
   const { t } = useLanguage();
 

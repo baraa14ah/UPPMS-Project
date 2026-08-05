@@ -7,7 +7,7 @@ use App\Models\Role;
 use App\Models\Task;
 use App\Models\University;
 use App\Models\User;
-use App\Services\AITaskService;
+use App\Services\Projects\AITaskService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;

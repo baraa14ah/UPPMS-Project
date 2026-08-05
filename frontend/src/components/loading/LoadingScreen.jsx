@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Stack, Typography, keyframes } from "@mui/material";
-import BrandLogo from "../BrandLogo";
+import BrandLogo from "../shared/BrandLogo";
 import { useLanguage } from "../../context/LanguageContext";
 
 const pulse = keyframes`

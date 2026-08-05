@@ -2,31 +2,31 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ProjectController;
-use App\Http\Controllers\TaskController;
-use App\Http\Controllers\CommentController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\ProjectVersionController;
-use App\Http\Controllers\SupervisorInvitationController;
-use App\Http\Controllers\StudentInvitationController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\GitHubAuthController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\UniversityController;
-use App\Http\Controllers\PlatformAdminController;
-use App\Http\Controllers\PasswordResetHelpController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\AIIdeationController;
-use App\Http\Controllers\AITaskController;
-use App\Http\Controllers\AcademicStageController;
-use App\Http\Controllers\AvailableRoomController;
-use App\Http\Controllers\DoctorAvailabilityController;
-use App\Http\Controllers\ScheduleController;
-use App\Http\Controllers\XmlImportController;
-use App\Http\Controllers\ProjectProposalController;
-use App\Http\Controllers\CommitteeController;
-use App\Http\Controllers\TrackController;
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Projects\ProjectController;
+use App\Http\Controllers\Projects\TaskController;
+use App\Http\Controllers\Projects\CommentController;
+use App\Http\Controllers\Notifications\NotificationController;
+use App\Http\Controllers\Projects\ProjectVersionController;
+use App\Http\Controllers\Invitations\SupervisorInvitationController;
+use App\Http\Controllers\Invitations\StudentInvitationController;
+use App\Http\Controllers\Profile\ProfileController;
+use App\Http\Controllers\Auth\GitHubAuthController;
+use App\Http\Controllers\Users\UserController;
+use App\Http\Controllers\Platform\UniversityController;
+use App\Http\Controllers\Platform\PlatformAdminController;
+use App\Http\Controllers\Auth\PasswordResetHelpController;
+use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Projects\AIIdeationController;
+use App\Http\Controllers\Projects\AITaskController;
+use App\Http\Controllers\Scheduling\AcademicStageController;
+use App\Http\Controllers\Scheduling\AvailableRoomController;
+use App\Http\Controllers\Profile\DoctorAvailabilityController;
+use App\Http\Controllers\Scheduling\ScheduleController;
+use App\Http\Controllers\Users\XmlImportController;
+use App\Http\Controllers\Proposals\ProjectProposalController;
+use App\Http\Controllers\Committees\CommitteeController;
+use App\Http\Controllers\Tracks\TrackController;
 
 /*
 |--------------------------------------------------------------------------
@@ -159,6 +159,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureUserHasUniversity:
         Route::get('/supervisors/available', [ProjectProposalController::class, 'availableSupervisors'])->middleware('role:student');
 
         Route::get('/tracks/available-stages', [TrackController::class, 'availableStages'])->middleware('role:student');
+        Route::get('/tracks/stages-for-project', [TrackController::class, 'stagesForProject'])->middleware('role:admin');
         Route::get('/student-progress', [TrackController::class, 'myProgress']);
         Route::get('/student-progress/{student}', [TrackController::class, 'studentProgress'])->middleware('role:admin,supervisor');
         Route::post('/student-progress/{student}/override', [TrackController::class, 'overridePrerequisite'])->middleware('role:admin');

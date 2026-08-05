@@ -6,7 +6,7 @@ use App\Models\BookmarkedIdea;
 use App\Models\Role;
 use App\Models\University;
 use App\Models\User;
-use App\Services\AIIdeationService;
+use App\Services\Projects\AIIdeationService;
 use Exception;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Http;

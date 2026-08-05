@@ -9,7 +9,7 @@ use App\Models\Project;
 use App\Models\Role;
 use App\Models\University;
 use App\Models\User;
-use App\Services\UniversitySchedulingBootstrapService;
+use App\Services\Scheduling\UniversitySchedulingBootstrapService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 

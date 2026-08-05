@@ -557,6 +557,10 @@ export default {
     createDescPlaceholder: "اشرح فكرة المشروع، الأهداف، والتقنيات المتوقعة...",
     titleLabel: "عنوان المشروع",
     descLabel: "وصف المشروع",
+    trackPhaseLabel: "المحطة الأكاديمية",
+    trackPhaseOptionalHint:
+      "اختياري. اختر المحطة الأساسية فقط — يُوضع المشروع مباشرة في أول خطوة داخلها. إن تُرك فارغاً يُستخدم أول محطة.",
+    trackPhaseDefaultOption: "أول محطة أكاديمية (افتراضي)",
     createBtn: "إنشاء المشروع",
     statsTotal: "إجمالي المشاريع",
     statsPending: "قيد الانتظار",
@@ -999,6 +1003,7 @@ export default {
     proposal: "مقترح",
     system: "نظام",
     committee: "لجنة",
+    track: "مسار أكاديمي",
   },
   notificationMessages: {
     task: {
@@ -1074,12 +1079,53 @@ export default {
       },
       reassigned: {
         title: "تم إعادة تعيين المقترح",
-        body: 'تم إعادة تعيين مقترحك "{title}" لمشرف آخر.',
+        body: 'تم إعادة تعيين مقترحك "{title}" إلى {supervisor}.',
+      },
+      assignedToYou: {
+        title: "مقترح مُعيَّن لك",
+        body: 'تم تعيين المقترح "{title}" لك للمراجعة.',
       },
     },
-    committee_member_added: "تمت إضافتك إلى لجنة {{committee}}",
-    committee_member_removed: "تمت إزالتك من لجنة {{committee}}",
-    committee_role_changed: "تم تحديث دورك في لجنة {{committee}} إلى {{role}}",
+    committee: {
+      memberAdded: {
+        title: "إضافة إلى لجنة",
+        body: 'تمت إضافتك إلى لجنة "{committee}" بدور {role}.',
+      },
+      memberRemoved: {
+        title: "إزالة من لجنة",
+        body: 'تمت إزالتك من لجنة "{committee}".',
+      },
+      roleChanged: {
+        title: "تحديث دور اللجنة",
+        body: 'تم تحديث دورك في لجنة "{committee}" إلى {role}.',
+      },
+    },
+    track: {
+      prerequisiteOverride: {
+        title: "تجاوز متطلبات المسار",
+        body: "أكمل المسؤول المرحلة «{stage}» لك عبر التجاوز: {reason}",
+      },
+      completed: {
+        title: "تهانينا — خريج",
+        body: "أكملت «{stage}» وأنهيت المسار الأكاديمي. أصبحت خريجاً.",
+      },
+      phaseCompleted: {
+        title: "اكتملت المحطة الفرعية",
+        body: "أكملت المحطة «{phase}». قدّم مقترح مشروع جديد لـ «{next}».",
+      },
+      defenseResult: {
+        title: "تم تسجيل نتيجة المناقشة",
+        body: "سُجّلت نتيجة مناقشة «{stage}» كـ {result}.{next}",
+        next: " انتقلت إلى «{next}».",
+      },
+      stageCompleted: {
+        title: "اكتملت المرحلة الأكاديمية",
+        body: "تم تعليم المرحلة «{stage}» كمكتملة.",
+      },
+      resultPassed: "ناجح",
+      resultFailed: "راسب",
+      resultIncomplete: "غير مكتمل",
+    },
   },
   github: {
     linkNow: "ربط GitHub الآن",
@@ -1893,7 +1939,17 @@ export default {
       "ينقل الطالب مباشرة إلى مرحلة معيّنة ويتخطى المراحل المقفلة سابقاً — يُسجَّل السبب في سجل التدقيق.",
     overrideAudit: "يتم تسجيل التجاوزات في سجل التدقيق.",
     selectStudent: "اختر الطالب",
+    selectStudentFirst: "اختر الطالب أولاً",
+    selectPhaseFirst: "اختر المحطة أولاً ثم الخطوة",
+    searchStudentOverride: "ابحث بالاسم أو الرقم الجامعي أو البريد...",
+    noRemainingStages: "لا توجد خطوات متاحة للتجاوز — الطالب أنهى كل المحطات المعروضة",
     targetStage: "المرحلة المستهدفة",
+    targetPhase: "المحطة (الحالية واللاحقة)",
+    targetStep: "الخطوة داخل المحطة",
+    overridePhaseHint:
+      "تُعرض المحطة الحالية واللاحقة، والخطوات غير المنجزة فقط. التجاوز يُكمل الخطوة المختارة وينقل الطالب للتالية.",
+    overrideStepHint: "اختر الخطوة لإكمالها بالتجاوز — ستصبح منجزة ويتحرّك شريط التقدم.",
+    stepCompleted: "منجزة",
     overrideReason: "السبب (10 أحرف على الأقل)",
     overrideReasonMin: "يجب أن يكون سبب التجاوز 10 أحرف على الأقل",
     overrideConfirm: "تطبيق التجاوز",

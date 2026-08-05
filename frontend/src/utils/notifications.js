@@ -91,14 +91,83 @@ function parseLegacyNotificationParams(body, type) {
       re: /^طلب «(.+?)» \((.+?)\) التسجيل/,
       map: (m) => ({ user_name: m[1], email: m[2] }),
     },
+    {
+      types: ["proposal_submitted"],
+      re: [
+        /^New project proposal from (.+?): (.+)$/i,
+        /^Proposal resubmitted by (.+?): (.+)$/i,
+      ],
+      map: (m) => ({ student_name: m[1], title: m[2] }),
+    },
+    {
+      types: ["proposal_approved"],
+      re: /^Your proposal '(.+?)' has been approved!?$/i,
+      map: (m) => ({ title: m[1] }),
+    },
+    {
+      types: ["proposal_rejected"],
+      re: /^Your proposal '(.+?)' requires changes/i,
+      map: (m) => ({ title: m[1] }),
+    },
+    {
+      types: ["proposal_reassigned"],
+      re: [
+        /^Your proposal '(.+?)' has been reassigned to (.+)$/i,
+        /^Proposal "(.+?)" has been assigned to you for review$/i,
+      ],
+      map: (m, idx) =>
+        idx === 0
+          ? { title: m[1], new_supervisor_name: m[2], for_supervisor: false }
+          : { title: m[1], for_supervisor: true },
+    },
+    {
+      types: ["committee_member_added"],
+      re: /^You have been added to committee "(.+?)" as (.+)\.?$/i,
+      map: (m) => ({ committee_name: m[1], role: m[2] }),
+    },
+    {
+      types: ["committee_member_removed"],
+      re: /^You have been removed from committee "(.+?)"\.?$/i,
+      map: (m) => ({ committee_name: m[1] }),
+    },
+    {
+      types: ["committee_role_changed"],
+      re: /^Your role in committee "(.+?)" has been updated to (.+)\.?$/i,
+      map: (m) => ({ committee_name: m[1], role: m[2] }),
+    },
+    {
+      types: ["prerequisite_override"],
+      re: /^An administrator unlocked (.+?) for you: (.+)$/i,
+      map: (m) => ({ stage_name: m[1], reason: m[2] }),
+    },
   ];
 
   for (const { types, re, map } of patterns) {
     if (!types.includes(normalized)) continue;
-    const match = text.match(re);
-    if (match) return map(match);
+    const list = Array.isArray(re) ? re : [re];
+    for (let i = 0; i < list.length; i += 1) {
+      const match = text.match(list[i]);
+      if (match) return map(match, i);
+    }
   }
   return {};
+}
+
+/** Localizes a defense / progress result code. */
+function defenseResultLabel(result, t) {
+  const code = String(result || "").toLowerCase();
+  if (code === "passed") return t("notificationMessages.track.resultPassed");
+  if (code === "failed") return t("notificationMessages.track.resultFailed");
+  if (code === "incomplete") return t("notificationMessages.track.resultIncomplete");
+  return result || "";
+}
+
+/** Localizes a committee role code. */
+function committeeRoleLabel(role, t) {
+  const code = String(role || "").toLowerCase();
+  if (code === "chair") return t("committees.chair");
+  if (code === "member") return t("committees.member");
+  return role || "";
 }
 
 /** Builds localized title/body for a known notification type. */
@@ -231,10 +300,101 @@ function translateByType(type, payload, extra, t) {
     };
   }
   if (normalized === "proposal_reassigned") {
+    const forSupervisor =
+      Boolean(extra.for_supervisor || payload.for_supervisor) ||
+      /assigned to you/i.test(String(payload?.title || ""));
+    if (forSupervisor) {
+      return {
+        title: t("notificationMessages.proposal.assignedToYou.title"),
+        body: t("notificationMessages.proposal.assignedToYou.body", {
+          title: extra.title || payload.title || "",
+        }),
+      };
+    }
     return {
       title: t("notificationMessages.proposal.reassigned.title"),
       body: t("notificationMessages.proposal.reassigned.body", {
         title: extra.title || payload.title || "",
+        supervisor:
+          extra.new_supervisor_name ||
+          payload.new_supervisor_name ||
+          extra.supervisor_name ||
+          payload.supervisor_name ||
+          "",
+      }),
+    };
+  }
+  if (normalized === "committee_member_added") {
+    return {
+      title: t("notificationMessages.committee.memberAdded.title"),
+      body: t("notificationMessages.committee.memberAdded.body", {
+        committee: extra.committee_name || payload.committee_name || "",
+        role: committeeRoleLabel(extra.role || payload.role, t),
+      }),
+    };
+  }
+  if (normalized === "committee_member_removed") {
+    return {
+      title: t("notificationMessages.committee.memberRemoved.title"),
+      body: t("notificationMessages.committee.memberRemoved.body", {
+        committee: extra.committee_name || payload.committee_name || "",
+      }),
+    };
+  }
+  if (normalized === "committee_role_changed") {
+    return {
+      title: t("notificationMessages.committee.roleChanged.title"),
+      body: t("notificationMessages.committee.roleChanged.body", {
+        committee: extra.committee_name || payload.committee_name || "",
+        role: committeeRoleLabel(extra.role || payload.role, t),
+      }),
+    };
+  }
+  if (normalized === "prerequisite_override") {
+    return {
+      title: t("notificationMessages.track.prerequisiteOverride.title"),
+      body: t("notificationMessages.track.prerequisiteOverride.body", {
+        stage: extra.stage_name || payload.stage_name || "",
+        reason: extra.reason || payload.reason || "",
+      }),
+    };
+  }
+  if (normalized === "track_completed") {
+    return {
+      title: t("notificationMessages.track.completed.title"),
+      body: t("notificationMessages.track.completed.body", {
+        stage: extra.stage_name || payload.stage_name || "",
+      }),
+    };
+  }
+  if (normalized === "phase_completed") {
+    return {
+      title: t("notificationMessages.track.phaseCompleted.title"),
+      body: t("notificationMessages.track.phaseCompleted.body", {
+        phase: extra.phase_name || payload.phase_name || "",
+        next: extra.next_stage_name || payload.next_stage_name || "",
+      }),
+    };
+  }
+  if (normalized === "defense_result_recorded") {
+    const nextName = extra.next_stage_name || payload.next_stage_name || "";
+    const next = nextName
+      ? t("notificationMessages.track.defenseResult.next", { next: nextName })
+      : "";
+    return {
+      title: t("notificationMessages.track.defenseResult.title"),
+      body: t("notificationMessages.track.defenseResult.body", {
+        stage: extra.stage_name || payload.stage_name || "",
+        result: defenseResultLabel(extra.result || payload.result, t),
+        next,
+      }),
+    };
+  }
+  if (normalized === "defense_stage_completed") {
+    return {
+      title: t("notificationMessages.track.stageCompleted.title"),
+      body: t("notificationMessages.track.stageCompleted.body", {
+        stage: extra.stage_name || payload.stage_name || "",
       }),
     };
   }
@@ -253,6 +413,14 @@ const ALWAYS_TRANSLATE_TYPES = new Set([
   "proposal_approved",
   "proposal_rejected",
   "proposal_reassigned",
+  "committee_member_added",
+  "committee_member_removed",
+  "committee_role_changed",
+  "prerequisite_override",
+  "track_completed",
+  "phase_completed",
+  "defense_result_recorded",
+  "defense_stage_completed",
 ]);
 
 /** Normalizes a notification record into `{ type, title, body, payload }`. */
@@ -299,7 +467,12 @@ export function resolveNotificationUrl(n) {
   const { type: rawType, payload } = parseNotification(n);
   const type = String(rawType || "");
   const extra = payload?.data || {};
-  const directUrl = extra?.url || payload?.url;
+  let directUrl = extra?.url || payload?.url || null;
+
+  // Legacy track links used a non-existent route.
+  if (typeof directUrl === "string" && directUrl === "/dashboard/progress") {
+    directUrl = "/dashboard/my-progress";
+  }
   if (directUrl) return directUrl;
 
   const projectId = extra?.project_id ?? payload?.project_id;
@@ -307,11 +480,15 @@ export function resolveNotificationUrl(n) {
   const commentId = extra?.comment_id ?? payload?.comment_id;
 
   if (type === "user.registration_pending") {
-    return payload?.url || "/dashboard/users?tab=pending";
+    return "/dashboard/users?tab=pending";
   }
 
-  if (type === "password.reset_request" || type === "password.reset_by_admin") {
-    return payload?.url || "/dashboard/users?tab=password_requests";
+  if (type === "password.reset_request") {
+    return "/dashboard/users?tab=password_requests";
+  }
+
+  if (type === "password.reset_by_admin") {
+    return "/dashboard/profile";
   }
 
   if (
@@ -319,7 +496,29 @@ export function resolveNotificationUrl(n) {
     type === "supervisor.membership_rejected" ||
     type === "account.approved"
   ) {
-    return payload?.url || "/dashboard/profile";
+    return type === "account.approved" ? "/dashboard" : "/dashboard/profile";
+  }
+
+  if (
+    type === "prerequisite_override" ||
+    type === "track_completed" ||
+    type === "phase_completed" ||
+    type === "defense_result_recorded" ||
+    type === "defense_stage_completed"
+  ) {
+    return "/dashboard/my-progress";
+  }
+
+  if (type === "committee_assignment") {
+    return "/dashboard/my-schedule";
+  }
+
+  if (type === "defense_scheduled") {
+    return projectId ? `/dashboard/projects/${projectId}` : "/dashboard/my-schedule";
+  }
+
+  if (type === "availability_collection_open") {
+    return "/dashboard/profile";
   }
 
   if (type === "comment.project" && projectId) {
@@ -334,7 +533,7 @@ export function resolveNotificationUrl(n) {
     }
   }
 
-  if (type.startsWith("task.") && projectId) {
+  if ((type.startsWith("task.") || type === "task.ai_generated") && projectId) {
     return `/dashboard/projects/${projectId}?tab=tasks${taskId ? `&task_id=${taskId}` : ""}`;
   }
 
@@ -350,8 +549,15 @@ export function resolveNotificationUrl(n) {
     return "/dashboard/student/invitations";
   }
 
-  if (type === "proposal_submitted" || type === "proposal_reassigned") {
+  if (type === "proposal_submitted") {
     return "/dashboard/proposal-review";
+  }
+
+  if (type === "proposal_reassigned") {
+    const forSupervisor =
+      Boolean(extra.for_supervisor || payload.for_supervisor) ||
+      /assigned to you/i.test(String(payload?.title || ""));
+    return forSupervisor ? "/dashboard/proposal-review" : "/dashboard/proposals";
   }
 
   if (type === "proposal_approved") {
@@ -444,6 +650,20 @@ export function getNotificationMeta(type = "", t) {
       color: "#7C3AED",
       bg: "rgba(124,58,237,0.12)",
       label: t("notificationLabels.committee"),
+    };
+  }
+  if (
+    normalized === "prerequisite_override" ||
+    normalized === "track_completed" ||
+    normalized === "phase_completed" ||
+    normalized === "defense_result_recorded" ||
+    normalized === "defense_stage_completed"
+  ) {
+    return {
+      icon: AssignmentRoundedIcon,
+      color: "#0F766E",
+      bg: "rgba(15,118,110,0.12)",
+      label: t("notificationLabels.track"),
     };
   }
   if (

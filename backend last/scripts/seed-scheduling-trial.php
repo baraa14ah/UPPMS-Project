@@ -18,7 +18,7 @@ use App\Models\Track;
 use App\Models\TrackStage;
 use App\Models\University;
 use App\Models\User;
-use App\Services\TrackService;
+use App\Services\Tracks\TrackService;
 use App\Support\TrackStageHierarchy;
 use Carbon\Carbon;
 use Illuminate\Contracts\Console\Kernel;
